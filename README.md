@@ -16,7 +16,7 @@ Hello, I'm Emmett, and welcome to my e-Portfolio! This repository serves as a co
 4. [Management of Data Analytics and Change](./BUSA8030_Management_of_Data_Analytics_and_Change/README.md)
 5. [Data and Visualization for Business](./BUSA8090_Data_and_Visualisation_for_Business/README.md)
 6. [Data Science](./COMP2200_Data_Science/README.md)
-7. [Machine Learning](./COMP8220_Machine_Learning/README.md)  *(Separate Repository avalilable)*
+7. [Machine Learning](./COMP8220_Machine_Learning/README.md)  *(Separate Repository available)*
 8. [Applied Econometrics](./ECON8040_Applied_Econometrics/README.md)
 9. [Statistical Theory](./STAT8310_Statistical_Theory/README.md)
 
@@ -28,7 +28,7 @@ Hello, I'm Emmett, and welcome to my e-Portfolio! This repository serves as a co
 - Excel
 
 ## Contact Information
-Feel free to reach out to me on [LinkedIn](https://https://www.linkedin.com/in/demirhanemmett/),[Kaggle](https://https://www.https://www.kaggle.com/emmettdemirhan/) or at [demirhanemmett@gmail.com](mailto:demirhanemmett@gmail.com).
+Feel free to reach out to me on [LinkedIn](https://www.linkedin.com/in/demirhanemmett/),[Kaggle](https://www.kaggle.com/emmettdemirhan/) or at [demirhanemmett@gmail.com](mailto:demirhanemmett@gmail.com).
 
 ## License
 This project is licensed under the [MIT License](./LICENSE).
