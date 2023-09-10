@@ -8,7 +8,7 @@ This unit aims to equip students with a comprehensive understanding of corporate
 
 #### 1. Financial Modeling Assignment
 
-In this assignment, I analyzed financial models presented in an Excel workbook named `acst6003-assignment.xlsx`. The workbook consisted of multiple sheets corresponding to different financial questions, such as investment evaluation, debt and equity securities, and financial market analysis.
+In this assignment, I analyzed financial models presented in an Excel workbook named `Corporate_Valuation_Report.xlsx`. The workbook consisted of multiple sheets corresponding to different financial questions, such as investment evaluation, debt and equity securities, and financial market analysis.
 
 **Skills Gained:**
 
@@ -19,6 +19,7 @@ In this assignment, I analyzed financial models presented in an Excel workbook n
 
 #### 2. Case Study: Sunrise Bakery Corporation
 
+This case study actually does not belong to this unit as it was a task from the Finance for Non-Finance Professionals course by Rice University on Coursera, and all the work has been done in Excel.
 For this case study, I adopted the role of a financial analyst to scrutinize a real-world scenario involving a potential investment in a new oven to increase the company's production capacity.
 
 **Skills Gained:**
