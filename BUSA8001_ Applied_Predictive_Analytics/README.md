@@ -7,7 +7,6 @@ This repository contains projects related to Applied Predictive Analytics. Here,
   - [Assignment 2](#assignment-2)
   - [Assignment 3](#assignment-3)
 - [Group Assignment](#group-assignment)
-- [Getting Started](#getting-started)
 - [Contact](#contact)
 
 ## Introduction
