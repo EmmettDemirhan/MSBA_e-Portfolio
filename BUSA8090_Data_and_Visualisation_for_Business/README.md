@@ -6,8 +6,8 @@ This unit equips students for a world where "data is the new oil." It provides i
 - [Introduction](#introduction)
 - [Skills Gained](#skills-gained)
 - [Assignments](#assignments)
-  - [Assignment 1](#assignment-1)
-  - [Assignment 2](#assignment-2)
+  - [Assignment 1](.//Assignment_1)
+  - [Assignment 2](.//Assignment_2)
 - [Contact](#contact)
 - [License](#license)
 
