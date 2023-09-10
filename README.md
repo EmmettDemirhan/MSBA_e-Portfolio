@@ -25,7 +25,9 @@ Hello, I'm Emmett, and welcome to my e-Portfolio! This repository serves as a co
 - R
 - SQL
 - Tableau
+- Qlik
 - Excel
+- Gretl
 
 ## Contact Information
 Feel free to reach out to me on [LinkedIn](https://www.linkedin.com/in/demirhanemmett/),[Kaggle](https://www.kaggle.com/emmettdemirhan/) or at [demirhanemmett@gmail.com](mailto:demirhanemmett@gmail.com).
