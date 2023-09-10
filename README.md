@@ -24,9 +24,9 @@ Hello, I'm Emmett, and welcome to my e-Portfolio! This repository serves as a co
 - Python
 - R
 - SQL
+- Excel
 - Tableau
 - Qlik
-- Excel
 - Gretl
 
 ## Contact Information
