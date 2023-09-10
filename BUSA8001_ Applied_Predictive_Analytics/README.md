@@ -37,7 +37,6 @@ This repository is dedicated to projects and assignments related to the Applied 
 - **Data**: Kaggle Dataset
 - **Technologies**: Python, XGBoost, Jupyter Notebook
 - **Folder**: `/Group_Assignment`
-- **Collaborators**: [Student A](https://github.com/studentA), [Student B](https://github.com/studentB)
 
 ## Skills Developed
 Throughout the course and the assignments, the following skills are gained:
