@@ -3,10 +3,10 @@ This repository contains projects related to Applied Predictive Analytics. Here,
 ## Table of Contents
 - [Introduction](#introduction)
 - [Assignments](#assignments)
-  - [Assignment 1](#assignment-1)
-  - [Assignment 2](#assignment-2)
-  - [Assignment 3](#assignment-3)
-- [Group Assignment](#group-assignment)
+  - [Assignment 1](./BBUSA8001_Applied_Predictive_Analytics/Assignment_1-Predicting_probability_of_future_defaults-1)
+  - [Assignment 2](./BUSA8001_Applied_Predictive_Analytics/Assignment_2-Predicting_probability_of_future_defaults-2)
+  - [Assignment 3](./BUSA8001_Applied_Predictive_Analytics/Assignment_3-Customer_Segmentation_Analysis)
+- [Group Assignment](./BUSA8001_Applied_Predictive_Analytics/Group_Assignment-Predicting_Airbnb_Listing_Prices_in_Melbourne)
 - [Contact](#contact)
 
 ## Introduction
