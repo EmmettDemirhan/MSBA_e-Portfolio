@@ -21,7 +21,7 @@ Throughout the course, you'll acquire skills such as:
 ## Assignments
 
 ### Data Science Portfolio
-- **Author**: UMUT DEMIRHAN | 46739106 | Master of Business Analytics
+- **Author**: UMUT DEMIRHAN
 - **Semester**: S1 2022
 - **Parts**: Portfolio Part 1, Portfolio Part 2, Portfolio Part 3, Portfolio Part 4
 - **Technologies**: Various data science libraries and tools (e.g., Pandas, NumPy, Seaborn)
@@ -30,7 +30,7 @@ Throughout the course, you'll acquire skills such as:
 ### Practical-Workshops
 - **Author**: UMUT DEMIRHAN
 - **Semester**: S1 2022
-- **Weeks**: Week 1 to Week 11
+- **Weeks**: Week 1 to Week 12
 - **Technologies**: Python, Markdown, various data science libraries
 - **Details**: Weekly practical workshops that cover topics such as Python basics, data analysis, machine learning algorithms, and more.
 
