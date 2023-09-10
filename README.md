@@ -1,7 +1,7 @@
 # Macquarie University MSBA e-Portfolio
 
 ## Introduction
-Hello, I'm Emmett, and welcome to my e-Portfolio! This repository serves as a comprehensive showcase of my coursework, projects, and skills acquired during my Master's in Business Analytics at Macquarie University.
+Hello, I'm Emmett, and welcome to my MSBA e-Portfolio! This repository serves as a comprehensive showcase of my coursework, projects, and skills acquired during my Master's in Business Analytics at Macquarie University.
 
 ## Objectives
 - Demonstrate proficiency in various business analytics techniques
