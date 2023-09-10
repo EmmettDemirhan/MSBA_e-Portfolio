@@ -12,7 +12,7 @@ Hello, I'm Emmett, and welcome to my e-Portfolio! This repository serves as a co
 ## Table of Contents
 1. [Principles of Finance](./ACST6003_Principles_of_Finance/README.md)
 2. [Techniques in Business Analytics](./BUSA8000_Techniques_in_Business_Analytics/README.md)
-3. [Applied Predictive Analytics](https://github.com/YourUsername/Applied_Predictive_Analytics) 
+3. [Applied Predictive Analytics](https://github.com/YourUsername/Applied_Predictive_Analytics/README.md) 
 4. [Management of Data Analytics and Change](./BUSA8030_Management_of_Data_Analytics_and_Change/README.md)
 5. [Data and Visualization for Business](./BUSA8090_Data_and_Visualisation_for_Business/README.md)
 6. [Data Science](./COMP2200_Data_Science/README.md)
