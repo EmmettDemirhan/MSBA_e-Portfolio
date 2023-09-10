@@ -43,7 +43,7 @@ For this case study, I adopted the role of a financial analyst to scrutinize a r
 
 ## Contact
 
-For further inquiries, feel free to reach out via [Email](mailto:your.email@example.com) or connect with me on [LinkedIn](https://www.linkedin.com/in/yourusername/).
+Feel free to reach out to me on [LinkedIn](https://www.linkedin.com/in/demirhanemmett/),[Kaggle](https://www.kaggle.com/emmettdemirhan/) or at [demirhanemmett@gmail.com](mailto:demirhanemmett@gmail.com).
 
 ## License
 
