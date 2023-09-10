@@ -6,7 +6,7 @@ This repository contains projects related to Applied Predictive Analytics. Here,
   - [Assignment 1](./Assignment_1-Predicting_probability_of_future_defaults-1)
   - [Assignment 2](./Assignment_2-Predicting_probability_of_future_defaults-2)
   - [Assignment 3](./Assignment_3-Customer_Segmentation_Analysis)
-- [Group Assignment](./Group_Assignment-Predicting_Airbnb_Listing_Prices_in_Melbourne)
+  - [Group Assignment](./Group_Assignment-Predicting_Airbnb_Listing_Prices_in_Melbourne)
 - [Contact](#contact)
 
 ## Introduction
@@ -32,7 +32,7 @@ This repository is dedicated to projects and assignments related to the Applied 
 - **Technologies**: Python, Scikit-learn, Jupyter Notebook
 - **Folder**: `/Assignment_3`
 
-## Group Assignment
+### Group Assignment
 - **Topics**: Price Prediction, Regression Analysis
 - **Data**: Kaggle Dataset
 - **Technologies**: Python, XGBoost, Jupyter Notebook
