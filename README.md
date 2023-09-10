@@ -1,4 +1,4 @@
-# Macquarie University MSBA e-Portfolio
+# MSBA e-Portfolio
 This repository serves as a comprehensive showcase of my coursework, projects, and skills acquired during my Master's in Business Analytics at Macquarie University.
 
 ## Objectives
