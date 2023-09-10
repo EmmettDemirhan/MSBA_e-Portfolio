@@ -3,9 +3,8 @@
 Introduction to foundational concepts of probability and statistical theory, with a focus on real-world applications.
 
 ## Table of Contents
-1. [Unit Information](#unit-information)
-2. [Skills Developed](#skills-developed)
-3. [Assessments Completed](#assessments-completed)
+1. [Skills Developed](#skills-developed)
+2. [Assessments Completed](#assessments-completed)
 
 
 ## Skills Developed
