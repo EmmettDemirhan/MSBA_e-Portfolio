@@ -13,7 +13,7 @@ The "BUSA8031 Business Analytics Project" unit at Macquarie University provides 
 **Components:**
 - **Reflective Essay:** A critical evaluation of personal learning and experiences, emphasizing the application of knowledge from the Master's program. This essay incorporates evidence like photographs, screenshots of previous work, certificates, etc.
 - **Infographic:** A visual summary of the reflective essay, created to enhance communication skills in a business context. This infographic is a creative representation of the journey and learning in business analytics.
-- 
+
 **Files:**
 - [Assignment 1 Part 1.pdf](.//BUSA8031_Assigment_1_Part_1/Assignment_1_Part_1.pdf)
 - [The Infographic.jpg](.//BUSA8031_Assigment_1_Part_1/The_infographic.jpg)
