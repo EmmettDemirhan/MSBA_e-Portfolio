@@ -49,8 +49,8 @@ The "BUSA8031 Business Analytics Project" unit at Macquarie University provides 
 **Technologies Used:** GitHub is used for coordination and Python is used for data analysis.
 
 **Files:**
-- [BUSA8031-Group-Project.pdf](.//Group_Project/BUSA8031-Group-Project.pdf)
-- [Team-3.pptx](.//Group_Project/Team-3.pptx)
+- [BUSA8031-Group-Project.pdf](.//Group_Project/BUSA8031_Group_Project.pdf)
+- [Team-3.pptx](.//Group_Project/Team_3_Presentation.pptx)
 
 ## Contact Information
 
