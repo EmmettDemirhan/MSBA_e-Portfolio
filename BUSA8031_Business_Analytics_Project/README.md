@@ -15,10 +15,10 @@ The "BUSA8031 Business Analytics Project" unit at Macquarie University provides 
 - **Infographic:** A visual summary of the reflective essay, created to enhance communication skills in a business context. This infographic is a creative representation of the journey and learning in business analytics.
 
 **Files:**
-- [Assignment 1 Part 1.pdf](.//BUSA8031_Assigment_1_Part_1/Assignment_1_Part_1.pdf)
+- [Assignment 1 Part 1.pdf](.//BUSA8031_Assigment_1_Part_1/BUSA8031_Assigment_1_Part_1.pdf)
 - [The Infographic.jpg](.//BUSA8031_Assigment_1_Part_1/The_infographic.jpg)
 - [Powerpoint for the Infographic.pptx](.//BUSA8031_Assigment_1_Part_1/Powerpoint_for_the_infographic.pptx)
-- [BBE Dataset.xlsx](.//BUSA8031_Assigment_1_Part_1/BBE_Dataset.xlsx)
+
 
 ### Assignment 2: Technology Solutions Analysis
 
@@ -32,9 +32,10 @@ The "BUSA8031 Business Analytics Project" unit at Macquarie University provides 
 **Files:**
 - [BBE Analysis.pbix](.//BUSA8031_Assignment_2/BBE_Analysis.pbix)
 - [BBE Analysis.twb](.//BUSA8031_Assignment_2/BBE_Analysis.twb)
-- [BBE Analysis(Python).ipynb](.//BUSA8031_Assignment_2/BBE_Analysis_Python.ipynb)
+- [BBE Analysis(Python).ipynb](.//BUSA8031_Assignment_2/BBE_Analysis(Python).ipynb)
 - [BUSA8031 Assignment 2.pdf](.//BUSA8031_Assignment_2/BUSA8031_Assignment_2.pdf)
-
+- [BBE Dataset.xlsx](.//BUSA8031_Assignment_2/BBE_Dataset.xlsx)
+  
 ## Group Project: Data-Driven Insights on COVID-19
 
 **Objective:** This report provides crucial insights into the COVID-19 pandemic, assisting the Agency for Clinical Innovation in formulating public health strategies. It includes descriptive and clustering analyses, various hypothesis tests, and vaccination analysis to understand the pandemic's trajectory and assess intervention effectiveness.
