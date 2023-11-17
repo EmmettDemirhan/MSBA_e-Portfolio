@@ -1,4 +1,4 @@
-# STAT8123: Effective Graphical Presentation
+# STAT8123: Statistical Graphics
 
 ## Overview
 This unit explores the principles of effective graphical presentation, placing them in a historical context and applying them to various statistical data sets. Emphasis is on modern multivariate graphical techniques like trellis/lattice graphs and mosaic plots. The course introduces R and other standard packages for presenting graphics, encouraging participants to investigate areas of interest.
