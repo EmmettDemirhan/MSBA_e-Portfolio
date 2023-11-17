@@ -1,0 +1,355 @@
+---
+title: "Predictive Analytics for Online Content Virality: A Machine Learning Approach to Shareability on Mashable"
+subtitle: "Topics in Applied Econometrics - Assignment 3"
+author: "Umut Demirhan - Student ID: 46739106"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    css: styles.css
+  word_document: default
+---
+```{css, echo=FALSE}
+.subtitle {
+  text-align: center;
+}
+
+```{css echo=FALSE}
+.title, .author, .date {
+  text-align: center;
+}
+```
+
+```{r echo=FALSE,include = FALSE, message=FALSE, warning=FALSE}
+#Load libraries 
+library(AER)
+library(tree)
+library("randomForest")
+library(Rfast)
+library(factoextra)
+library(dynlm)
+library(nnet)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(caret)
+```
+
+<div align="center"> <h3> Abstract </h3> </div>
+
+This report details the development of a predictive model for determining the shareability of news items on Mashable.com. Utilizing a dataset of 39,644 articles, I engaged in data preparetion, and partitioning the dataset into equal training and testing sets. Several models were evaluated, including logistic regression, classification trees, bagging, and random forest algorithms. The final model, a tuned Random Forest, was chosen for its superior performance, achieving a misclassification rate of approximately 34.03% on the testing dataset. Feature importance analysis revealed keyword-related attributes and topic closeness as significant predictors. The report concludes with predictions on the shareability of new articles, providing valuable insights for content strategists aiming to maximize online engagement.
+
+\newpage
+
+## Introduction
+
+The virality of online content is a key indicator of its success. This report aims to model the shareability of articles on Mashable.com, using data on 56 features from nearly 40,000 news items. The goal is predict whether a news item will have a high or a low number of shares. Such insights are valuable for publishers and marketers seeking to maximize the reach of their digital content.
+
+
+## Data Preparation
+
+This section details the initial steps taken to prepare the data for analysis. The raw dataset was imported into R, where preliminary checks for data integrity and structure were performed. I converted the target variable, 'shares', into a binary factor to align with the classification objective of our models. This groundwork is crucial for accurate model training and performance evaluation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+# Import the data
+data <- read.csv("OnlineNewsShares.csv")
+
+# Display the first few rows of the data
+# head(data)
+# names(data)
+# str(data)
+
+# Convert 'shares' to a factor
+data$shares <- factor(data$shares, levels = c("low", "high"))
+```
+
+
+### Splitting the Dataset 
+
+In order to evaluate our model effectively, I divided the dataset into two parts: one for training the model and the other for testing its predictive performance. To ensure the reproducibility of our results, I set a random seed. The dataset was split evenly, resulting in two subsets, each containing 19,822 observations. It is essential to check the distribution of the target variable in both training and testing sets to confirm that they are similarly distributed. This balance helps in preventing any bias towards a particular class in our predictive modeling.
+
+```{r}
+set.seed(123) # Set a seed for reproducibility
+
+# 'shares' is the last column
+targetIndex <- ncol(data)
+
+# Split the data into training and testing sets 
+train.ind <- sample(1:nrow(data), (nrow(data))/2)
+train <- data[train.ind,]
+test <- data[-train.ind,]
+y <- test$shares
+```
+
+```{r echo=FALSE, results='asis'}
+# Create a data frame to display the sizes of the datasets
+dataset_sizes <- data.frame(
+  Dataset = c("Training Set", "Testing Set"),
+  Size = c(nrow(train), nrow(test))
+)
+# Create a data frame to display the distribution of the target variable
+target_distribution_train <- as.data.frame(table(train$shares))
+colnames(target_distribution_train) <- c("Shares", "Count_Train")
+target_distribution_test <- as.data.frame(table(test$shares))
+colnames(target_distribution_test) <- c("Shares", "Count_Test")
+target_distribution <- merge(target_distribution_train, target_distribution_test, by="Shares")
+
+# Display the dataset sizes using kable
+kable(dataset_sizes, format = "html", caption = "Sizes of Training and Testing Sets") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Display the distribution of the target variable using kable
+kable(target_distribution, format = "html", caption = "Distribution of Target Variable in Training and Testing Sets") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+\newpage
+
+## Model Training 
+
+In this segment, I outline the process of training various predictive models. Each model was chosen for its ability to handle binary classification tasks:
+
+* **Logistic Regression:** Served as a baseline for comparison due to its simplicity and interpretability.
+* **Classification Tree:** Provided a visual representation of decision-making based on feature values and allowed for easy interpretation.
+* **Bagging:** Aimed to improve on the single classification tree by reducing variance through bootstrapping and aggregation.
+* **Random Forest:** Extended the bagging concept by also incorporating feature randomness, further reducing error due to variance and potential overfitting.
+
+The models were trained using the training dataset, and initial performance was gauged through misclassification rates. These rates are initial indicators of how well each model might perform on unseen data.
+
+
+### Logistic Regression Model Training as a baseline for Comperison 
+
+Logistic Regression is a fundamental statistical approach that I used as a baseline model. It provides a good starting point for binary classification due to its simplicity and interpretability. I fitted a logistic regression model using all available predictors from the training set. Predictions were then made on the testing set to assess the model's performance. The success of the predictions is summarized in a success table, contrasting predicted values against actual values. The misclassification rate, a primary metric for model performance, is reported to understand the model's accuracy.It is %49.94, meaning the model has almost no predictive power at all. 
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+set.seed(123) # Set a seed for reproducibility
+# Initial full logistic regression model
+logit <- glm(shares ~ ., family=binomial(link="logit"), data=train)
+
+# Summary of the logistic regression model
+summary(logit)
+
+# Prediction
+p <- predict(logit, new.x = test, type = "response")
+pred.logit <- round(p)
+
+# Confusion matrix 
+suc.tab.logit <- table(predicted = pred.logit, actual = test$shares)
+# Missclassfication Rate
+mc.logit <- 1 - sum(diag(suc.tab.logit))/sum(suc.tab.logit)
+```
+
+```{r echo=FALSE, results='asis'}
+# Display the success table using kable
+kable(suc.tab.logit, format = "html", caption = "Logistic Regression Model Success Table") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Print the misclassification rate
+cat("<strong>Misclassification error rate of the Logistic Regression Model:</strong>",sprintf("%1.4f", mc.logit), '<br/>')
+```
+
+
+
+### Classification Tree Model Training
+
+The Classification Tree model was trained to provide an understanding of the data. Using the deviance criterion for splitting, the model distilled the dataset to two predictive variables, suggesting their strong influence on shareability. Cross-validation with `K=20` folds helped validate the tree's performance and mitigate overfitting. The resulting tree was straightforward, utilizing minimal nodes to classify articles.
+
+The classification tree model uses two main features (`kw_avg_avg and data_channel_is_entertainment`) to predict whether a news item will be highly shared. It's a simple model with three terminal nodes and has a misclassification rate of about 39.28%.
+
+Compared to this basic tree model, ensemble methods like Random Forest or boosting algorithms are likely to perform better because they can capture more complex patterns by combining multiple trees, reducing the chance of overfitting and improving prediction accuracy.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+set.seed(123) # Set a seed for reproducibility
+
+# Classification Tree Model Training
+class.tree <- tree(shares~., data= train, split = "deviance") # entropy
+class.tree
+
+# plot(class.tree)
+#text(class.tree, pretty = 0)
+# Printing frame
+
+print(class.tree$frame)
+
+# Summary of the model
+summary(class.tree)
+
+# Cross validation
+cv <- cv.tree(class.tree, K =20, FUN = prune.misclass) # k is alpha
+cv 
+
+# plot(cv$size, cv$dev, type = "b")
+
+# Pruning no required as provides the same output with class.tree
+# prune <- prune.tree(class.tree, best = 3)
+# plot(prune)
+# text(prune, pretty = 0)
+
+# Predictions 
+pred.tree <- predict(class.tree, newdata = test, type = "class")
+
+# Confusion matrix 
+suc.tab.tree <- table(predicted = pred.tree, actual = test$shares)
+
+# misclassification rate
+mc.tree <- 1 - sum(diag(suc.tab.tree))/sum(suc.tab.tree)
+```
+```{r echo=FALSE, results='asis'}
+# Display the confusion matrix using kable
+kable(suc.tab.tree, format = "html", caption = "Classification Tree Model Confusion Matrix") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Print the misclassification rate in HTML format
+cat("<strong>Misclassification error rate of the Classification Tree Model:</strong>",  sprintf("%1.4f", mc.tree), '<br/>')
+```
+
+
+###  Random Forest Model Training with Bagging Technique 
+
+Bagging, a bootstrap aggregating method, was employed to train a model that reduces variance and prevents overfitting. The bagging approach used the randomForest function with all features considered at each split, aligning with the total number of variables in the dataset. This ensemble technique, which constructs a multitude of decision trees and aggregates their predictions, aimed to enhance the stability and accuracy of the predictive model. The Out-of-Bag (OOB) error estimate and a confusion matrix were computed to evaluate the model's performance, with the misclassification rate serving as the primary metric of accuracy.The model's misclassification rate of approximately 34.48% demonstrates its effectiveness, considering the complexity of the dataset and the inherent noise in social sharing behavior.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+set.seed(123) # Set a seed for reproducibility
+
+# Bagging
+bag <- randomForest(shares~.,  data = train, mtry= 56)
+bag
+
+# Predictions 
+pred.bag <- predict(bag, newdata = test)
+# Confusion matrix
+suc.tab.bag <- table(predicted = pred.bag, actual = test$shares)
+suc.tab.bag
+
+# misclassification rate
+mc.bag <- 1 - sum(diag(suc.tab.bag))/sum(suc.tab.bag)
+cat("Misclassification error rate of Bagging Model:", mc.bag, "\n")
+```
+
+```{r echo=FALSE, results='asis'}
+# Display the confusion matrix using kable
+kable(suc.tab.bag, format = "html", caption = "Confusion Matrix for Bagging Model") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Display the misclassification rate in HTML format
+cat("<strong>Misclassification Error Rate of the Bagging Model:</strong>", sprintf("%1.4f", mc.bag), '<br/>')
+```
+
+
+### Random Forest Model Training
+
+Random Forest, an ensemble learning method, was trained to enhance the predictive capability beyond that of a single tree or bagging. This method constructs multiple decision trees and outputs the mode of their predictions. I trained the model with the default number of trees (500) and allowed the algorithm to choose an optimal number of variables at each split. The OOB error rate(34.01%) provided an estimate of the prediction error, and I plotted this against the number of trees to visualize performance stabilization. Additionally, I conducted a parameter tuning exercise to find the optimal `mtry` value, which is the number of variables considered at each split. The variable importance plot revealed the most significant predictors according to the model, offering insights into feature relevance.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE,results='hide'}
+set.seed(123) # Set a seed for reproducibility
+# Random forest Model Traning
+rf <- randomForest(shares~.,  data = train)
+rf
+# Plot the OOB error rate against the number of trees
+oob_error <- rf$err.rate[,1]  # Extract the OOB error rate
+num_trees <- 1:nrow(rf$err.rate) # Extract the number of trees
+plot(num_trees, oob_error, type = "b", 
+     xlab = "Number of Trees", ylab = "OOB Error Rate", 
+     main = "Random Forest Model Complexity vs OOB Error", pch = 19)
+optimal_trees <- which.min(oob_error) # Highlight the tree with the lowest OOB error rate
+points(optimal_trees, oob_error[optimal_trees], col = "red", cex = 1.5, pch = 19)
+
+# Tune the Random Forest model to find the optimal mtry
+tuneRF(subset(train, select = -shares), train[,"shares"])
+```
+```{r, echo=TRUE, warning=FALSE, message=FALSE,fig.height=7, results='hide'}
+# Plot variable importance for classification
+varImpPlot(rf, main="Variable Importance", type=2) # type=2 for classification
+```
+```{r echo=FALSE, results='asis'}
+# Extract the OOB error rate and optimal number of trees
+rf_summary <- data.frame(
+  Optimal_Trees = optimal_trees,
+  Lowest_OOB_Error_Rate = rf$err.rate[optimal_trees, 1])
+
+# Display the Random Forest model summary using kable
+kable(rf_summary, format = "html", caption = "Random Forest Model Summary") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+### Tuned Random Forest Model
+
+A Random Forest model was fine-tuned to determine the most effective combination of parameters. The `mtry` parameter was set to `7`, optimizing the number of variables each tree considers, and the `ntree` parameter was set to `473`, specifying the number of trees in the forest after determining the point of diminishing returns on the OOB error rate. This fine-tuning aimed to balance the model complexity with predictive accuracy. The tuned model's predictions were assessed against the test dataset, and a confusion matrix was generated to evaluate the accuracy, culminating in the calculation of the misclassification rate.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='asis'}
+set.seed(123) # Set a seed for reproducibility
+
+tuned_rf <- randomForest(shares ~ ., data = train, mtry = 7, ntree = 473)
+# Predictions on the testing dataset
+rfPredictions <- predict(tuned_rf, newdata=test)
+
+# Create a confusion matrix to compare the actual and predicted values
+confusionMatrix <- table(Predicted=rfPredictions, Actual=test$shares)
+
+# Calculate the misclassification rate
+mc.rf <- 1 - sum(diag(confusionMatrix)) / sum(confusionMatrix)
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# Display the confusion matrix using kable
+kable(confusionMatrix, format = "html", caption = "Confusion Matrix for Tuned Random Forest Model") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Display the misclassification rate in HTML format
+cat("<strong>Misclassification Rate on the Testing Dataset:</strong>",  sprintf("%1.4f", mc.rf), '<br/>')
+```
+
+
+### Model Training Summary 
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# Create a data frame to hold the misclassification rates
+performance_comparison <- data.frame(
+  Model = c("Logistic Regression", "Classification Tree","Bagging", "Random Forest"),
+  Misclassification_Rate = c(mc.logit, mc.tree,mc.bag, mc.rf)
+)
+# Use knitr::kable to create a table
+knitr::kable(performance_comparison, format = "html", caption = "Misclassification Rates of Models on Testing Data") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+
+The Random Forest model is chosen for its slighly better performance over Bagging model, demonstrating a misclassification rate of approximately 34.03% on the testing dataset.  This rate signifies an improvement over both the Logistic Regression and Classification Tree models. The selected model is constructed with `473` trees and examines `7` variables at each decision split.
+
+The variable importance plot shows that keyword-related features (`kw_avg_avg, kw_max_avg`) and topic closeness (`LDA_02, LDA_01, LDA_04,` etc.) are the most predictive of article shares. The optimal Random Forest model uses a low number of trees and a small set of predictors at each split, efficiently balancing complexity and performance.
+
+Additionally, employing Principal Component Analysis (PCA) was not deemed necessary as the Random Forest model already handles high-dimensional data well, selecting features effectively during the tree-building process. Moreover, Random Forest provides an inherent measure of feature importance, aiding in interpretability, which PCA might obscure due to its transformation of variables into principal components. Given these considerations, introducing PCA would not necessarily offer a clear advantage.
+
+## Prediction on New Features 
+
+The results below show that the first news item is predicted to have a low number of shares, while the other two are predicted to have a high number of shares.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='asis'}
+set.seed(123) # Set a seed for reproducibility
+# Load the new data
+new_data <- read.csv("New_features.csv")
+
+# Predict the number of shares using the final tuned Random Forest model
+new_data_predictions <- predict(tuned_rf, newdata = new_data)
+
+# Create a new data frame with indices and the predicted classes
+results_table <- data.frame(Index = 1:nrow(new_data),
+                            Predicted_Class = as.integer(new_data_predictions))
+results_table$Predicted_Class <- ifelse(results_table$Predicted_Class == 1, "High", "Low")
+
+# Use kable() to create a nice table for the predicted shares
+kable(results_table, format = "html", caption = "Predictions of Shares for New News Items") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+## Conclusion 
+
+This report has explored the predictive modeling of article shareability on Mashable.com using machine learning techniques. Through data preparation and then and model training, I established a solid foundation for predictive analytics. The final tuned Random Forest model outperformed other models, achieving a misclassification rate of approximately 34.03%, and highlighted the significance of keyword features and topic relevance in predicting article shares.Although it is better a random guess like in logistic regression model, The results are not really promising as the misclassification rate is quite high, For example, changing `.Random.seed` changes the result of prediction on new features as expected. 
+
+This study is not without limitations; The dataset, although extensive, captures a snapshot up to 2015 and does not account for the dynamic nature of online content consumption and sharing behavior that has evolved since. Future research could incorporate more recent data, explore the effects of social media trends, and consider the evolving algorithms of content distribution platforms.
+
+In closing, the intersection of data analytics and content creation holds vast potential. As digital strategies become increasingly data-driven, studies like this one are crucial for illuminating the path to content that not only captures attention but also compels readers to share, thereby amplifying its reach and impact.
+
+#### AI Use Acknowledgement
+I have used Chat GPT and Grammarly to revise my writing, and debugging.

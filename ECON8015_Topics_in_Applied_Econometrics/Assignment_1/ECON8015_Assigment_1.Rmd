@@ -1,0 +1,444 @@
+---
+title: "Topics in Applied Econometrics - Assignment 1"
+author: "Umut Demirhan - Student ID: 46739106"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    css: styles.css
+  word_document: default
+---
+
+```{css echo=FALSE}
+.title, .author, .date {
+  text-align: center;
+}
+```
+
+```{r echo=FALSE,include = FALSE, message=FALSE, warning=FALSE}
+#Load libraries 
+library(readabs)
+library(forecast)
+library(texreg)
+library(dygraphs)
+library(knitr)
+library(kableExtra)
+```
+<div align="center"> <h3> Abstract </h3> </div>
+
+This assignment presents an in-depth analysis of three distinct but significant time-series forecasting problems: the median price of established house transfers, weekly COVID-19 hospitalizations in Australia, and the Industrial Production Total Index. Utilizing Autoregressive Integrated Moving Average (ARIMA) models and their seasonal variants (SARIMA), the study provides insights into the underlying patterns, trends, and seasonality of each data set. Model performance is rigorously evaluated using metrics such as Akaike and Bayesian Information Criteria (AIC and BIC), as well as the Ljung-Box test for residual analysis. Findings suggest that ARIMA models offer robust forecasting tools for capturing complex temporal dynamics across diverse sectors. This work serves as an application of time-series analysis methods, reinforcing their importance and efficacy in predictive analytics.
+
+
+# 1. Forecasting Median Price of Established House Transfers
+
+## Introduction 
+
+This analysis aims to study the trends and fluctuations in the median price of established house transfers, utilizing data collected over a span of years, from 2002 to 2023. The study employs time-series analysis methods like ARIMA (AutoRegressive Integrated Moving Average) models, along with graphical visualizations, such as ACF (AutoCorrelation Function) and PACF (Partial AutoCorrelation Function) plots, to interpret underlying patterns.
+
+## Data Import and Initial Exploration
+
+### Importing the Data
+```{r echo=TRUE, fig.cap="Scatter plots of variables", message=FALSE, warning=FALSE}
+# Import the data
+house <- read_abs(series_id = "A83728545T")
+house_ts <- ts(house$value, start = c(2002,3),frequency = 4)
+```
+
+### Initial Data Plots
+
+```{r Differences & Logs, echo=TRUE, warning=FALSE, message=FALSE}
+
+par(mfrow=c(2,2))
+plot(house_ts, main= "Raw Data")
+plot(log(house_ts), main= "Logged Data")
+plot(diff(house_ts), main= "Differenced Data")
+plot(diff(log(house_ts)), main="Differenced Logged Data")
+```
+
+## Time-Series Diagnostics
+
+### ACF and PACF Analysis
+
+```{r ACF & PACF, echo=TRUE, warning=FALSE, message=FALSE}
+par(mfrow=c(2,3))
+Acf(diff(log(house_ts)), lag.max = 48, main= "ACF of the differenced log")
+Acf(diff(log(house_ts),4), lag.max = 48, main= "ACF of seasonally differenced log")
+Acf(diff(diff(log(house_ts)),4), lag.max = 48, main= "ACF of seasonally differenced differenced log")
+
+Pacf(diff(log(house_ts)), lag.max = 48, main= "PACF of the differencde log")
+Pacf(diff(log(house_ts),4), lag.max = 48, main= "PACF of seasonally differenced log")
+Pacf(diff(diff(log(house_ts)),4), lag.max = 48, main= "PACF of seasonally differenced differenced log")
+
+```
+
+### Insights from ACF and PACF
+
+The ACF and PACF plots for the median price of established house transfers indicate a non-stationary series with trend and seasonal components. These findings necessitate the use of an AR term and differencing for stationarity. ACF diagnostics on differenced log data suggest non-stationarity and seasonality, while seasonal differencing stabilizes ACF values. PACF in both cases advocates for a first-order AR term. Overall, these insights support the application of a Seasonal ARIMA model, specifically ARIMA(1,1,0)(1,1,0)[4], for robust forecasting.
+
+
+## Model Estimation and Comparison of Models
+
+```{r ARIMA, echo=TRUE, warning=FALSE,results='asis', message=FALSE}
+out.house <- Arima(log(house_ts), order = c(1,1,0),
+             seasonal = list(order = c(1,1,0),
+                             period = 4), include.constant = TRUE)
+
+Auto.out <- auto.arima(log(house_ts), allowdrift=TRUE,
+                       allowmean = TRUE, ic = "aic")
+
+htmlreg(list(out.house, Auto.out),
+                custom.model.names = c("ARIMA(1,1,0)(1,1,0)[4]", "ARIMA(3,1,0) with drift  model by auto.arima"),
+                caption = "ARIMA Models Comparison",
+                caption.above = TRUE, 
+                custom.note = "")
+
+```
+
+The ARIMA(1,1,0)(1,1,0)[4] model appears to fit your time-series data on house prices reasonably well. The model parameters suggest a minor influence of past values (ar1=0.0514) and a stronger seasonal component (sar1=-0.4653). The low AIC and BIC values indicate a good model fit, and the training set error measures further corroborate this. Overall, the model adequately captures the underlying patterns in the data.
+
+The 'auto.arima' function suggests an ARIMA(3,1,0) model with a drift term for the log-transformed house prices data. This model shows a better fit than the previous ARIMA(1,1,0)(1,1,0)[4] model, as indicated by a lower AIC of -249.59 compared to -211.89. The ARIMA(3,1,0) model also includes a drift term, suggesting a small but consistent upward trend in the data.
+
+
+## Model Validation 
+
+### Ljung–Box test
+
+```{r Ljung–Box test, echo=TRUE, warning=FALSE,results='asis', message=FALSE}
+
+# Box test for chosen model
+box_test_house <- Box.test(out.house$residuals, lag=36, type= "Ljung-Box", fitdf=2)
+
+# Box test for Auto ARIMA model
+box_test_auto <- Box.test(Auto.out$residuals, lag=36, type= "Ljung-Box", fitdf=4)
+
+# Combine results in a data frame
+results <- data.frame(
+  Model = c("ARIMA(1,1,0)(1,1,0)[4]","ARIMA(3,1,0) with drift  model by auto.arima"),
+  Statistic = c(box_test_house$statistic, box_test_auto$statistic),
+  p_value = c(box_test_house$p.value, box_test_auto$p.value)
+)
+
+# Print the table
+kable(results, col.names = c("Model", "Ljung-Box Statistic", "p-value"))
+
+```
+
+Ljung-Box test results further support the model's adequacy, with p-values above 0.05 indicating independently distributed residuals. Overall, the ARIMA(3,1,0) model is the better choice for capturing the data's underlying patterns.
+
+## Forecast with the Selected Model
+
+```{r Forecast , echo=TRUE, warning=FALSE, message=FALSE}
+
+fc.out <- forecast(Auto.out, h=4, fan = TRUE)
+fc.out$x <- house_ts
+fc.out$mean <- exp(fc.out$mean + Auto.out$sigma2/2)
+fc.out$lower <- exp(fc.out$lower + Auto.out$sigma2/2)
+fc.out$upper <- exp(fc.out$upper + Auto.out$sigma2/2)
+
+
+# Plot the Forecast
+plot(fc.out, 
+     include = 12,
+     main="4-Quarter Forecast of Median Price of Established House Transfers",
+     xlab="Quarter",
+     ylab="Median Price ($)",
+     col=rainbow(8),
+     ylim=c(min(fc.out$lower), max(fc.out$upper)))
+
+
+
+
+```
+
+```{r Forecasttable1 , echo=FALSE, warning=FALSE, message=FALSE}
+# Create a data frame for forecast results
+forecast_df <- data.frame(
+  Qyarter = seq_len(4),
+  Mean = round(fc.out$mean, 2),
+  Lower_Bound = round(fc.out$lower[,1], 2),
+  Upper_Bound = round(fc.out$upper[,2], 2)
+)
+
+# Display the forecast table
+kable(forecast_df, col.names = c("Quarter", "Forecasted Mean", "Lower Bound", "Upper Bound")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+## Conclusion 
+
+In the analysis of the median price of established house transfers, the study employs time-series methods, specifically ARIMA models, to understand underlying trends and patterns from 2002 to 2023. ACF and PACF plots suggest a non-stationary series, necessitating differencing and the inclusion of an AutoRegressive (AR) term to achieve stationarity.
+
+Two ARIMA models were examined: ARIMA(1,1,0)(1,1,0)[4] and ARIMA(3,1,0) with a drift term. The latter shows superior fit, as indicated by lower AIC and BIC values. Ljung-Box tests for both models confirm the independence of residuals, adding confidence to their predictive capabilities.
+
+Statistical criteria, including AIC and BIC, are leveraged to evaluate model adequacy. The chosen ARIMA(3,1,0) model not only captures the complexities of the established house market but also provides a mathematically rigorous framework for future forecasts.
+
+
+
+
+# 2. Forecasting COVID-19 cases admitted to Australian hospitals
+
+## Introduction 
+
+This study aims to forecast weekly COVID-19 hospitalizations in Australia using time-series models. Given the absence of seasonal trends and a high degree of volatility in hospitalization rates, the analysis employs Autoregressive Integrated Moving Average (ARIMA) models to capture short-term dependencies and irregular patterns in the data.
+
+
+## Data Import and Initial Exploration
+
+### Importing the Data
+```{r echo=TRUE, fig.cap="Scatter plots of variables", message=FALSE, warning=FALSE}
+# Import the data
+covid <- read.csv("covid_hospitalisations.csv")
+
+# Create a time series object
+covid_ts <- ts(covid$Hospitalisations, start=c(2022,36), frequency=52)
+
+```
+
+### Initial Data Plots
+
+```{r Differences & Logs of covid, echo=TRUE, warning=FALSE, message=FALSE}
+par(mfrow=c(2,2))
+plot(covid_ts, main= "Raw Data")
+plot(log(covid_ts), main= "Logged Data")
+plot(diff(covid_ts), main= "Differenced Data")
+plot(diff(log(covid_ts)), main="Differenced Logged Data")
+```
+The sharp fluctuations in hospitalization rates for COVID-19 in Australia signal a high level of volatility. This complexity underscores the challenges in accurately predicting future hospitalization needs. Additionally, the absence of consistent seasonal patterns further complicates forecasting based on historical data alone, suggesting that simple seasonal models would likely fall short.Further complicating the analysis is the lack of any discernible long-term trend, either upward or downward, amplifying the uncertainty surrounding projections of future hospitalization rates.
+
+
+## Time-Series Diagnostics
+
+### ACF and PACF Analysis
+
+```{r ACF & PACF of covid, echo=TRUE, warning=FALSE, message=FALSE}
+
+par(mfrow=c(2,1))
+Acf(diff(log(covid_ts)),lag.max = 36, main= "ACF of the differenced log")
+Pacf(diff(log(covid_ts)),lag.max = 36, main= "PACF of the differenced log")
+```
+
+### Insights from ACF and PACF
+
+The ACF and PACF plots for hospitalization data indicate short-term dependencies with the most significant influence at the first lag. The ACF suggests stationarity, and the PACF confirms the primary importance of the immediate past value. These findings point to an ARIMA model with parameters focused on short-term lags: AR term (p) at 1, Integrated term (d) at 0 or 1, and MA term (q) at 0 or 1. Initial models of ARIMA(1,0,1) or ARIMA(1,1,1) appear suitable for further testing.
+
+
+## Model Estimation and Comparison of Models
+
+```{r ARIMA2, echo=FALSE, warning=FALSE,results='asis', message=FALSE}
+out.covid <- Arima(covid_ts, order = c(1,1,1), include.constant = TRUE)
+
+Auto.out2 <- auto.arima(covid_ts, allowdrift=TRUE,
+                       allowmean = TRUE, ic = "aic")
+
+htmlreg(list(out.covid, Auto.out2),
+                custom.model.names = c("ARIMA(1,1,1)", "ARIMA(2,0,1) model by auto.arima"),
+                caption = "ARIMA Models Comparison",
+                caption.above = TRUE, 
+                custom.note = "")
+
+```
+
+The ARIMA(1,1,1) model with a drift term shows a significant autoregressive component and a minor moving average component, with a downward trend in hospitalizations. However, the ARIMA(2,0,1) model, suggested by auto.arima, performs similarly in terms of AIC and BIC but has lower error measures like RMSE and MAE. The latter model also includes a non-zero mean, indicating a constant offset. Overall, the ARIMA(2,0,1) model seems to offer a better fit for the hospitalization data.
+
+
+## Model Validation
+
+### Ljung–Box test
+```{r Ljung–Box test2, echo=TRUE, warning=FALSE,results='asis', message=FALSE}
+
+# Box test for chosen model
+box_test_covid <- Box.test(out.covid$residuals, lag=12, type= "Ljung-Box", fitdf=3)
+
+# Box test for Auto ARIMA model
+box_test_auto2 <- Box.test(Auto.out2$residuals, lag=36, type= "Ljung-Box", fitdf=3)
+
+# Combine results in a data frame
+results2 <- data.frame(
+  Model = c("ARIMA(1,1,1)","ARIMA(2,0,1) model by auto.arima"),
+  Statistic = c(box_test_covid$statistic, box_test_auto2$statistic),
+  p_value = c(box_test_covid$p.value, box_test_auto2$p.value)
+)
+
+# Print the table
+kable(results2, col.names = c("Model", "Ljung-Box Statistic", "p-value"))
+
+```
+
+
+The ARIMA(2,0,1) model outperforms the ARIMA(1,1,1) model in predictive accuracy, as indicated by lower RMSE and MAE values. Additionally, the Ljung-Box test shows higher p-values for the ARIMA(2,0,1) model, suggesting its residuals are more closely aligned with white noise. Overall, the ARIMA(2,0,1) model is the more effective choice for capturing the data's underlying structure.
+
+## Forecast with the Selected Model
+
+```{r Forecast2 , echo=TRUE, warning=FALSE, message=FALSE}
+
+fc.out2 <- forecast(Auto.out2, h=4, fan = TRUE)
+fc.out2$x <- covid_ts
+
+plot(fc.out2, 
+     include = 24, 
+     main="4-Week Forecast of COVID-19 Hospitalizations in Australia",
+     xlab="Week",
+     ylab="Number of Hospitalizations",
+     col=rainbow(8))
+
+```
+
+```{r Forecasttable2 , echo=FALSE, warning=FALSE, message=FALSE}
+# Create a data frame for forecast results
+forecast_df2 <- data.frame(
+  Week = seq_len(4),
+  Mean = round(fc.out2$mean, 2),
+  Lower_Bound = round(fc.out2$lower[,1], 2),
+  Upper_Bound = round(fc.out2$upper[,2], 2)
+)
+
+# Display the forecast table
+kable(forecast_df2, col.names = c("Week", "Forecasted Mean", "Lower Bound", "Upper Bound")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+## Conclusion 
+
+The ARIMA(2,0,1) model emerged as the most effective tool for forecasting COVID-19 hospitalizations. The model yielded the lowest error measures and passed the Ljung-Box test, indicating its residuals are indistinguishable from white noise. The four-week forecast predicts a significant rise in hospitalizations, useful for healthcare planning and resource allocation. Overall, the model offers a robust and accurate mechanism for short-term forecasting in a highly volatile and unpredictable scenario.
+ 
+
+
+
+# 3. Forecasting Industrial Production 
+
+## Introduction 
+
+This session addresses the time-series analysis of the Industrial Production Total Index, sourced from Federal Reserve Economic Data (FRED). The analysis employs data visualization, Autocorrelation and Partial Autocorrelation functions, and Seasonal ARIMA (SARIMA) models for both manual and automated configurations. Model performance is evaluated using metrics like AIC and the Ljung-Box test, followed by a forecasting exercise.
+
+## Data Import and Initial Exploration
+
+### Importing the Data
+```{r echo=TRUE, fig.cap="Scatter plots of variables", message=FALSE, warning=FALSE}
+# Import the data
+library(fredr)
+fredr_set_key("919ac488f169040b52e411572c0070b5")
+production <- fredr(series_id = "IPB50001N")
+# Create a time series object
+production.ts <- ts(production$value, start = c(1919,1), frequency = 12)
+```
+
+### Initial Data Plots
+
+```{r Differences & Logs of production, echo=TRUE, warning=FALSE, message=FALSE}
+par(mfrow=c(2,2))
+
+plot(production.ts, main= "Raw Data")
+plot(log(production.ts), main= "Logged Data")
+plot(diff(production.ts), main= "Differenced Data")
+plot(diff(log(production.ts)), main="Differenced Logged Data")
+
+```
+
+
+The production data exhibits a long-term upward trend that reached its peak in the early 2000s, followed by significant declines—most notably during the 2008 financial crisis and the COVID-19 pandemic in April 2020. The data also presents fluctuations that hint at seasonal effects. Transformation techniques, such as logarithms, help smooth these variations, while differencing the data centralizes fluctuations around zero. Although differencing reveals increased variability during crisis events, combining both logging and differencing mitigates this variability, making the data better suited for subsequent time series modeling.
+
+## Time-Series Diagnostics
+
+### ACF and PACF Analysis
+
+```{r ACF & PACF of production, echo=TRUE, warning=FALSE, message=FALSE}
+par(mfrow=c(2,1))
+
+par(mfrow=c(2,3))
+Acf(diff(log(production.ts)), lag.max = 48, main= "ACF of the differenced log")
+Acf(diff(log(production.ts),12), lag.max = 48, main= "ACF of seasonally differenced log")
+Acf(diff(diff(log(production.ts)),12), lag.max = 48, main= "ACF of seasonally differenced differenced log")
+
+Pacf(diff(log(production.ts)), lag.max = 48, main= "PACF of the differencde log")
+Pacf(diff(log(production.ts),12), lag.max = 48, main= "PACF of seasonally differenced log")
+Pacf(diff(diff(log(production.ts)),12), lag.max = 48, main= "PACF of seasonally differenced differenced log")
+
+```
+
+### Insights from ACF and PACF
+
+The ACF and PACF plots for the differenced log data indicate a strong seasonal component with spikes at 12-month intervals. This suggests the applicability of a Seasonal ARIMA model. Specifically, the data hints at annual seasonality, calling for a seasonal differencing of order 1 (D=1). The ACF and PACF patterns also suggest a non-seasonal MA term of order 1 (q=1) and seasonal MA and AR terms at the 12th lag (Q=1, P=1). Thus, an initial SARIMA(0,1,1)(1,1,1)[12] model is recommended for further analysis.
+
+
+## Model Estimation and Comparison of Models
+
+```{r ARIMA3, echo=TRUE, warning=FALSE,results='asis', message=FALSE}
+out.production <- Arima(log(production.ts), order = c(0,1,1), seasonal = list(order = c(1,1,1),
+                             period = 12), include.constant = TRUE)
+
+Auto.out3 <- auto.arima(log(production.ts), allowdrift=TRUE,
+                       allowmean = TRUE, ic = "aic")
+
+htmlreg(list(out.production, Auto.out3),
+                custom.model.names = c("SARIMA(0,1,1)(1,1,1)[12]", "ARIMA(3,1,0)(2,0,0)[12] model by auto.arima"),
+                caption = "ARIMA Models Comparison",
+                caption.above = TRUE, 
+                custom.note = "")
+
+```
+
+The manually configured SARIMA(0,1,1)(1,1,1)[12] model shows significant moving average (MA) and seasonal moving average (SMA) terms, with an AIC of -6018.74 and a fairly low error rate in the training set. This suggests good model fit and predictive capacity. On the other hand, the auto.arima function suggests a SARIMA(3,1,0)(2,0,0)[12] model with an AIC of -5942.87, slightly less favorable than the manually configured model. This model has significant autoregressive (AR) and seasonal autoregressive (SAR) terms. Given the lower AIC and training set error in the manually configured model, it may be a better choice for forecasting.
+
+### Ljung–Box test
+
+```{r Ljung–Box test3, echo=TRUE, warning=FALSE,results='asis', message=FALSE}
+
+# Box test for chosen model
+box_test_production <- Box.test(out.production$residuals, lag=36, type= "Ljung-Box", fitdf=3)
+
+# Box test for Auto ARIMA model
+box_test_auto3 <-Box.test(Auto.out3$residuals, lag=36, type= "Ljung-Box", fitdf=3)
+
+# Combine results in a data frame
+results3 <- data.frame(
+  Model = c("SARIMA(0,1,1)(1,1,1)[12]","ARIMA(3,1,0)(2,0,0)[12] model by auto.arima"),
+  Statistic = c(box_test_production$statistic, box_test_auto3$statistic),
+  p_value = c(box_test_production$p.value, box_test_auto3$p.value)
+)
+
+# Print the table
+kable(results3, col.names = c("Model", "Ljung-Box Statistic", "p-value"))
+
+```
+
+Both models display significant autocorrelation in their residuals up to 36 lags, suggesting that there may still be some information or patterns in the data that neither model has captured. 
+
+
+## Forecast with the Selected Model
+
+```{r Forecast3 , echo=TRUE, warning=FALSE, message=FALSE}
+
+fc.out3 <- forecast(Auto.out3, h=12, fan = TRUE)
+fc.out3$x <- production.ts
+fc.out3$mean <- exp(fc.out3$mean + Auto.out$sigma2/2)
+fc.out3$lower <- exp(fc.out3$lower + Auto.out$sigma2/2)
+fc.out3$upper <- exp(fc.out3$upper + Auto.out$sigma2/2)
+
+plot(fc.out3, include = 48,
+     main = "12-Month Forecast of Industrial Production",
+     xlab = "Month",
+     ylab = "Production Index",
+      col=rainbow(8),
+     lwd = c(2, 1, 1))
+
+```
+
+```{r Forecasttable3 , echo=FALSE, warning=FALSE, message=FALSE}
+# Create a data frame for forecast results
+forecast_df3 <- data.frame(
+  Month = seq_len(12),
+  Mean = round(fc.out3$mean, 2),
+  Lower_Bound = round(fc.out3$lower[,1], 2),
+  Upper_Bound = round(fc.out3$upper[,2], 2)
+)
+
+# Display the forecast table
+kable(forecast_df3, col.names = c("Month", "Forecasted Mean", "Lower Bound", "Upper Bound")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+## Conclusion 
+
+The analysis reveals a complex time-series structure for the Industrial Production Total Index. Both the manually configured SARIMA(0,1,1)(1,1,1)[12] and the automatically configured SARIMA(3,1,0)(2,0,0)[12] models display reasonable AIC scores and training set errors. However, neither model passes the Ljung-Box test, indicating unaccounted-for autocorrelations in the residuals.
+
+

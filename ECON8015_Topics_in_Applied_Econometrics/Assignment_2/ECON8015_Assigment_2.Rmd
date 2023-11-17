@@ -1,0 +1,250 @@
+---
+title: "Topics in Applied Econometrics - Assignment 2"
+author: "Umut Demirhan - Student ID: 46739106"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    css: styles.css
+  word_document: default
+---
+
+```{css echo=FALSE}
+.title, .author, .date {
+  text-align: center;
+}
+```
+
+```{r echo=FALSE,include = FALSE, message=FALSE, warning=FALSE}
+#Load libraries 
+library(pscl)
+library(MASS)
+library(lmtest)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(sandwich)
+```
+<div align="center"> <h3> Abstract </h3> </div>
+
+In the endeavor to dissect the underpinnings of prescription drug usage within a demographic, this analysis casts light on how socioeconomic and health factors potentially modulate prescription drug utilization. Deploying a dataset "premed.csv" encapsulating individual-level data on prescription drug use, health status, and socioeconomic characteristics, various econometric models were enlisted to deduce insights into the relationships within the data. The pursuit was driven by three pivotal research questions, exploring the impact of income and age on drug prescriptions and estimating the prescription non-utilization probability for a specific individual demographic. The models engaged included Poisson regression and Negative Binomial models, with subsequent methodological robustness checks and hypothesis tests. It was unveiled that age significantly correlates with prescription drug usage, while no robust evidence was found linking income to prescription drug use, amidst holding other variables constant. The assumptions held within this analytical journey included the independent distribution of error terms and linear relationships in the log odds, with critical deliberation on potential over-dispersion and zero-inflation in the count data.
+\newpage
+
+## Introduction 
+
+This investigation explores the determinants of prescription drug usage, diving into the interplay among income, age, and health conditions using an econometric analysis of the dataset, "premed.csv". Pivoting around three focal research questions—examining the associations of income and age with prescription drug use, and estimating the prescription drug utilization probability for a specific demographic profile (a 50-year-old male)—the study navigates through variables like ‘prescrib’, ‘doctorco’, and ‘age’. The objective is to unravel patterns and associations.
+
+### Data Importation and Preliminary Analysis
+```{r echo=TRUE, fig.cap="Scatter plots of variables", message=FALSE, warning=FALSE}
+# Import the data
+data <- read.csv("premed.csv")
+
+# Display the first few rows of the data
+head(data)
+```
+The dataset "premed.csv" encompasses variables such as 'prescrib' (integer, indicating prescription count), 'doctorco' (integer, representing doctor consultations), 'chcond' (categorical, denoting chronic condition status), alongside demographic indicators like 'income' (decimal format), and 'age' and 'sex' (integers).
+
+### Summary Statistics
+
+```{r}
+# Summary statistics
+summary(data)
+```
+The summary shows that "prescrib" (our dependent variable) exhibits zero-inflation and a skewed distribution, suggesting the potential need for a zero-inflated model. Variables like "age" and "income" may offer insights into socio-economic dynamics influencing drug prescriptions, while "chcond" presents a categorical variable that warrants a nuanced approach to understand its impact on the prescription variable effectively.  investigate non-linear relationships and interactions amongst the variables will be further investigated to appropriately model prescription behavior.
+\newpage
+
+### Visualizations of Variable Distributions
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# Visualization of numerical variables
+par(mfrow=c(2,3))  # setting the plot area into a 2x4 array
+hist(data$prescrib, main="Distribution of Prescriptions", xlab="Prescriptions", col="lightblue")
+hist(data$doctorco, main="Distribution of Doctor Consultations", xlab="Doctor Consultations", col="lightgreen")
+hist(data$income, main="Distribution of Income", xlab="Income", col="lightpink")
+hist(data$age, main="Distribution of Age", xlab="Age", col="lightyellow")
+# Bar plot of chcond
+barplot(table(data$chcond), main="Bar Plot of Chronic Conditions", 
+        xlab="Chronic Condition", ylab="Frequency", col=c("lightgreen", "skyblue", "orange"))
+# Bar plot of sex
+barplot(table(data$sex), main="Bar Plot of Sex", 
+        xlab="Sex", ylab="Frequency", col=c("pink", "blue"),
+        names.arg=c("Female", "Male"), ylim=c(0, max(table(data$sex)) + 50))
+```
+
+
+Examining the histograms, "prescrib" and "doctorco" show right-skewed count data, fitting for negative binomial regression and revealing most individuals have minimal prescriptions and doctor visits. "Income" hints at a notably large group within a specific income bracket, while "age" reveals a bimodal distribution, reflecting prominent younger and older age groups in the dataset. "Chcond" indicates the majority of the sample doesn’t report chronic conditions ("np" category), and "sex" appears evenly distributed, providing a balanced gender representation in our data, mitigating potential gender biases in modeling.
+\newpage
+
+## Methodology and Model Construction
+
+### Poisson Regression Model
+```{r}
+# Poisson Model
+pois.model <- glm(prescrib ~ income + age + sex + chcond + doctorco + actdays + illness, 
+                  family = poisson, data = data)
+# Model summary
+summary(pois.model)
+```
+The Poisson regression model underscores age, sex, chcond, doctorco, actdays, and illness as significant predictors for 'prescrib' (p < 0.001), while income remains non-influential (p = 0.51). While age positively correlates with 'prescrib', the model’s residual deviance reduction prompts cautious examination for possible overdispersion.
+
+#### Applying robust standard errors to Poisson  model
+```{r} 
+out.p.robust <- coeftest(pois.model, vcov = vcovHC(pois.model, type = "HC0"))
+out.p.robust
+```
+
+Comparing the initial Poisson model to the model with robust standard errors, minor fluctuations are observed in the standard errors and z-values, while the significance of the predictors largely remains unchanged. This consistency in statistical significance suggests that initial interpretations of the predictors' effects are robust to potential violations of the Poisson model assumptions.
+
+### Negative Binomial Model
+```{r}
+# Basic Negative Binomial Model
+nb.model <- glm.nb(prescrib ~ income + age + sex + chcond + doctorco + actdays + illness, data = data)
+
+# Model summary
+summary(nb.model)
+```
+
+#### Applying robust standard errors to Negative Binomial Model
+```{r} 
+out_nb_robust <- coeftest(nb.model, vcov = vcovHC(nb.model, type = "HC0"))
+out_nb_robust
+```
+Applying robust standard errors did not significantly alter the statistical inferences, reinforcing the robustness of the findings.
+
+### Model Comparison: AIC, Likelihood Ratio Test (LRT) and Overdispersion Test
+```{r}
+# Comparing models using AIC
+AIC(pois.model, nb.model)
+
+# Likelihood Ratio Test (LRT) between Poisson and Negative Binomial
+lrt.pois.nb <- lrtest(pois.model, nb.model)
+lrt.pois.nb
+
+# Conducting Overdispersion Test
+od_test <- odTest(nb.model, alpha = 0.05)
+```
+The Negative Binomial Model (NBM) and Poisson regression model exhibit disparate fits for the 'prescrib' response variable, with differing estimates and significances across covariates. Key findings include a lower AIC for the NB model (10443.90) versus the Poisson model (10610.19) and a statistically substantial Likelihood Ratio Test (LRT) result. The Overdispersion Test further substantiates the NB model’s preferability, showcasing a significant p-value and underscoring its adeptness at handling overdispersion in the data. Consequently, the NBM, validated by the AIC, LRT, and Overdispersion Test, emerges as the optimal model for elucidating the dataset's inherent relationships.
+
+
+### McFadden's R2
+
+```{r}
+# McFadden's R2 = 1 - logLik(model)/logLik(null model)
+# Extracting Pseudo R-squared
+library(DescTools)
+pseudoR2_mcfadden <- PseudoR2(nb.model, which="McFadden")
+cat("McFadden Pseudo R-squared of Negative Binomial model:", round(pseudoR2_mcfadden, 3), "\n")
+```
+The McFadden Pseudo \( R^2 \) of the Negative Binomial model is 0.182, suggesting that the model provides an 18.2% improvement in fit over a null model, which is modest and indicates that there is substantial unexplained variability in the response variable 'prescrib'.
+\newpage
+
+## 1. Influence of Income on Prescription Medicines Use
+
+```{r}
+# Restricted NB Model without 'income'
+nb.model.rest.inc <- glm.nb(prescrib ~ age + sex + chcond + doctorco + actdays + illness, data = data)
+
+# Comparing models using AIC and Likelihood Ratio Test (LRT)
+AIC(nb.model.rest.inc, nb.model)
+
+# Wald Test
+w.nb <- waldtest(nb.model.rest.inc, nb.model)
+w.nb
+
+# Likelihood Ratio Test
+lrt.nb <- lrtest(nb.model.rest.inc, nb.model)
+lrt.nb
+
+# Calculating the critical values for F-statistics and Chi-square statistics
+critical_value_f <- qf(0.95, df1=1, df2=9999999999999999)
+critical_value_chi_sq <- qchisq(0.95, df=1)
+
+# Printing the critical values
+cat("The critical value for the F-statistic at 95% confidence is:", critical_value_f, "\n")
+cat("The critical value for the Chi-square statistic at 95% confidence is:", critical_value_chi_sq, "\n")
+```
+
+Statistical tests reveal insufficient evidence to reject the null hypothesis that income doesn't influence prescription medicine use, given other constant variables. The Wald and Likelihood Ratio Tests both produce p-values exceeding the 0.05 significance level, implying income is not a statistically significant predictor. Moreover, a negligible AIC difference between models indicates no meaningful enhancement in model fit by including income as a predictor. Therefore, the analysis does not validate the hypothesis that higher incomes correlate with increased prescription medicine use, assuming other variables remain constant.
+
+**Note:** Employing both the LRT and Wald tests adheres to tutorial explorations, ensuring a rigorous evaluation via varied statistical methodologies, and aligning with educational goals of comprehending and contrasting different testing approaches.
+\newpage
+
+## 2. Influence of Age on Prescription Medicines Use
+
+```{r}
+# Restricted NB Model without 'age'
+nb.model.rest.age <- glm.nb(prescrib ~ income + sex + chcond + doctorco + actdays + illness, data = data)
+
+# Comparing models using AIC and Likelihood Ratio Test (LRT)
+AIC(nb.model.rest.age, nb.model)
+
+# Wald Test
+w.nb.age <- waldtest(nb.model.rest.age, nb.model)
+w.nb.age
+
+# Likelihood Ratio Test
+lrt.nb.age <- lrtest(nb.model.rest.age, nb.model)
+lrt.nb.age
+```
+
+The analysis indicates `age` as a significant predictor of prescription medicine use, with other variables held constant. Both the Wald and Likelihood Ratio Test (LRT) yield highly significant p-values, firmly rejecting the null hypothesis regarding 'age' coefficients. Moreover, the Akaike Information Criterion (AIC) is markedly lower in the model with age (10443.90) versus without it (10828.64), pointing to a superior fit. Thus, older individuals tend to use more prescription medicines, assuming other variables are constant.
+\newpage
+
+## 3. Probability Estimates for Specific Individuals
+
+### Probability estimates for the individual with no chronic condition
+```{r}
+# Creating a new data frame for prediction
+newdata.np <- data.frame(
+  age = 50,  # 50 years old
+  sex = 1,  # male
+  chcond = factor(c("np")),  # no chronic condition
+  doctorco = 0,  # no doctor consultation
+  actdays = 0,  # no active days
+  illness = 0  # no illness
+)
+
+# Predicting the probability of zero prescriptions for the individual
+p0_np <- predprob(nb.model.rest.inc,newdata.np)
+cat("The probability of zero prescriptions for the individual:", p0_np[1], "\n")
+
+```
+
+### Probability estimates for the individual with a limiting chronic condition
+```{r}
+# Changing chronic condition status to "limited activity"
+# Creating a new data frame for prediction
+newdata.la<- data.frame(
+  age = 50,  # 50 years old
+  sex = 1,  # male
+  chcond = factor(c("la")),  # no chronic condition
+  doctorco = 0,  # no doctor consultation
+  actdays = 0,  # no active days
+  illness = 0  # no illness
+)
+# Predicting the probability of zero prescriptions for the individual with a limiting chronic condition
+p0.la <- predprob(nb.model.rest.inc,newdata.la)
+
+cat("The probability of zero prescriptions for the individual with a limiting chronic condition:", p0.la[1], "\n")
+```
+**Based on the provided model predictions:**
+
+* For a 50-year-old male without a chronic condition and no recent doctor consultations, injuries, or illnesses, the estimated probability of using no prescription medications is approximately 70.34%.
+
+* If the same individual had a chronic condition that limited activity, the probability of not using prescription medications drops to 48.08%.
+
+The presence of a limiting chronic condition reduces the likelihood of having used no prescription medications in the specified timeframe, according to the model's predictions.
+
+\newpage
+## Conclusion 
+
+This econometric analysis of prescription drug utilization aimed to elucidate the relationships between various socioeconomic and health-related factors, primarily focusing on income, age, and the potential for chronic conditions. The study navigated through varied models, starting with the Poisson regression and progressing to the Negative Binomial model due to evident overdispersion in the data. A sequence of statistical tests, namely the AIC and Likelihood Ratio Test, underscored the Negative Binomial model's superior fit and capability to adeptly manage the overdispersion, thereby substantiating its selection for providing robust and reliable findings in analyzing the factors influencing prescription drug use. 
+
+**Income's Non-Significant Impact:** Unexpectedly, income did not materialize as a significant determinant of prescription drug use, a conclusion supported by both the Wald and Likelihood Ratio Tests and AIC comparison. 
+
+**Predominant Role of Age:** Age established itself as a key factor, where older individuals are statistically more likely to utilize prescription drugs, aligning with the conventional understanding of health aging and increased need for medicinal interventions with age advancement.
+
+**Impact of Chronic Conditions:**  The predictive analysis revealed that a 50-year-old male with no chronic conditions and no recent health consultations had a 70.34% probability of not using prescription drugs in the past two days. However, introducing a limiting chronic condition significantly altered this scenario, reducing the probability to 48.08%, thereby underscoring the substantial impact chronic conditions can have on prescription drug use.
+
+In summary, while the non-significant role of income challenges common perspectives, age and the presence of chronic conditions emerge as critical in understanding prescription drug use. This analysis paves the way for future research and policy-making in healthcare, emphasizing the importance of healthcare strategies, especially for those dealing with chronic ailments.
+
+#### AI Use Acknowledgement
+I have used Chat GPT and Grammarly to revise my writing, and debugging.
