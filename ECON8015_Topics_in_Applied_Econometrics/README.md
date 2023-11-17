@@ -14,7 +14,7 @@ This unit included three major assignments, each focusing on different aspects o
 
 ### [Assignment 1: Forecasting Economic Indicators](./Assignment_1)
 #### Overview
-Forecasting and uncertainty measurement for economic variables: house prices, COVID-19 hospitalisations, and industrial production.
+This assignment required forecasting and uncertainty measurement for key economic indicators, including housing prices, COVID-19 hospitalizations, and industrial production, using advanced econometric methods.
 #### Files
 - [covid_hospitalisations.csv](./Assignment_1/covid_hospitalisations.csv)
 - [ECON8015_Assignment_1.html](./Assignment_1/ECON8015_Assignment_1.html)
@@ -24,7 +24,7 @@ Forecasting and uncertainty measurement for economic variables: house prices, CO
 
 ### [Assignment 2: Prescription Drug Use Analysis](./Assignment_2)
 #### Overview
-Constructing and estimating a model to explain prescription medicine usage, based on survey data.
+The focus was on modeling and analyzing factors influencing prescription drug use, using survey data and econometric methods taught in the unit.
 #### Files
 - [premed.csv](./Assignment_2/premed.csv)
 - [ECON8015_Assignment_2.html](./Assignment_2/ECON8015_Assignment_2.html)
@@ -34,7 +34,7 @@ Constructing and estimating a model to explain prescription medicine usage, base
 
 ### [Assignment 3: Online News Popularity Analysis](./Assignment_3)
 #### Overview
-Analyzing factors affecting the popularity of online news articles.
+This task involved analyzing online news data to understand factors affecting news popularity showcasing the practical application of machine learning and econometric analysis in media and communication.
 #### Files
 - [New_features.csv](./Assignment_3/New_features.csv)
 - [OnlineNewsShares.csv](./Assignment_3/OnlineNewsShares.csv)
