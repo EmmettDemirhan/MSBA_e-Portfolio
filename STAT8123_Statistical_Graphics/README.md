@@ -29,8 +29,8 @@ This unit explores the principles of effective graphical presentation, placing t
   - [Soccer Data](./Assignment_3/soccer.csv)
 
 ### Additional Resources
-- **Australia Shape Data File for Assignments 2 and 3**: `LGA_2021_AUST_GDA2020_SHP.rar` 
-  - [Download Link](./Assignment_2/LGA_2021_AUST_GDA2020_SHP.rar)
+- **Australia Shape Data File for Assignments 2 and 3**:
+  - [LGA_2021_AUST_GDA2020_SHP.rar](.//LGA_2021_AUST_GDA2020_SHP.rar)
 
 ## Learning Outcomes
 - Familiarity with important and contemporary graphical examples.
