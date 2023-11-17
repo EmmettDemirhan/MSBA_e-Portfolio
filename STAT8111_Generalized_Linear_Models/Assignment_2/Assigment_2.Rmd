@@ -1,0 +1,873 @@
+---
+title: "STAT7111 & STAT8111 Generalized Linear Models Assignment 2"
+author: "Umut Demirhan - Student ID: 46739106"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+---
+
+```{r echo=FALSE,include = FALSE, message=FALSE, warning=FALSE, results='hide'}
+#Load libraries 
+library(ISwR)
+library(ggplot2)
+library(tidyverse)
+library(GGally)
+library(broom)
+library(car)  
+library(gridExtra)
+library(DHARMa)
+library(ggrepel)
+library(patchwork)
+library(SuppDists)
+library(knitr)
+library(MASS)
+# Suppressing all warnings globally
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+## Question 1: Analyzing Patients with Primary Biliary Cirrhosis Data
+
+The dataset pbc.csv contains baseline data on 312 patients with primary biliary cirrhosis who were about to undergo a clinical trial for a treatment at the Mayo Clinic. I aim to study the relationship between serum bilirubin, considered as a strong indicator of disease progression, and other variables.
+
+### A: Examination of Variable serBilir
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.height=2, fig.width=4, fig.align='center'}
+# Load the dataset
+pbc <- read.csv("pbc.csv")
+
+# Plot histogram for serBilir
+ggplot(pbc , aes(x = serBilir)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of 'serBilir'",
+       x = "Serum Bilirubin (mg/dl)",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+The variable `serBilir` displays a positively skewed, continuous, and non-negative distribution, which leans towards the selection of Gamma or Inverse Gaussian distributions. Mathematically: - For Gamma: $X \sim \Gamma(\alpha, \beta)$ - For Inverse Gaussian: $X \sim IG(\mu, \lambda)$
+
+### B: Examination of Variables `alkaline` and `prothrombin`
+
+#### Graphical Examination of `alkaline` and `prothrombin`
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.height=2, fig.width=6, fig.align='center'}
+# Plotting histogram for alkaline
+p1 <- ggplot(pbc, aes(x = alkaline)) +
+  geom_histogram(binwidth = 300, fill = "red", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Alkaline",
+       x = "Alkaline Phosphatase (U/liter)",
+       y = "Frequency") +
+  theme_minimal()
+
+# Plotting histogram for prothrombin
+p2 <- ggplot(pbc, aes(x = prothrombin)) +
+  geom_histogram(binwidth = 0.5, fill = "green", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Prothrombin",
+       x = "Prothrombin Time (seconds)",
+       y = "Frequency") +
+  theme_minimal()
+# Display plots side by side
+grid.arrange(p1, p2, ncol=2)
+```
+
+-   Examining the histogram for `alkaline`, I observe a pronounced right-skewness. The high variance, outliers, and skewed nature of `alkaline` suggest a necessity for a transformation to stabilize the variance and to achieve a more symmetrical, Gaussian-like distribution of the data. The `logalkaline` variable, obtained by $\log_e(\text{alkaline})$, minimizes the impact of extreme values and facilitates improved modeling.
+-   Moderate skewness and high-end values in `prothrombin` data might impact linear modeling. Logarithmic transformation is employed to enhance modeling by addressing skewness and stabilizing variance, expressed as $\text{logprothrombin} = \log_e (\text{prothrombin})$.
+
+```{r}
+# Creating log-transformed variables
+pbc$logalkaline <- log(pbc$alkaline)
+pbc$logprothrombin <- log(pbc$prothrombin)
+pbc$logserBilir <- log(pbc$serBilir)
+```
+
+### C: Investigating Continuous Covariates and `serBilir`
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.height=4, fig.width=5, fig.align='center'}
+# Adding `serBilir` for correlation matrix
+conts <- c("age", "albumin", "alkaline", "prothrombin", "serBilir")
+# Checking for collinearity
+cor_matrix <- cor(pbc[conts])
+
+ggpairs(pbc[conts])
+# Computing VIF for each continuous covariate
+# vif(lm(serBilir ~ age + albumin + alkaline + prothrombin, data = data))
+```
+
+#### Interpretation of Scatter Plots and Collinearity Investigation
+
+-   **Age and serBilir:** Scatter and correlation $r = 0.0279$ suggest a non-linear, weak relationship.
+-   **Albumin and serBilir:** Observed non-linear pattern in scatter; weak negative linear relationship $r = -0.341$.
+-   **Alkaline and serBilir:** Non-linear pattern with $r = 0.121$ indicates a weak positive relationship.
+-   **Prothrombin and serBilir:** Scatter implies exponential relationship; moderate positive correlation $r = 0.395$.
+
+**Collinearity Notes:** No severe multicollinearity observed from correlation matrix. Moderate correlations warrant cautious interpretation of model coefficients.
+
+### D: Frequency Tables for Discrete Variables
+
+```{r echo=TRUE}
+# Discrete variables
+discrete_vars <- c("sex", "hepatomegaly", "histologic")
+
+# Generate and print frequency tables for each discrete variable in one line
+for(var in discrete_vars){
+  cat(paste("\nFrequency Table for '", var, "': ", sep=""), "\n")
+  print(table(pbc[[var]]), quote = FALSE)
+}
+```
+- **Sex:** Predominantly female subjects (276 females vs. 36 males), indicating a substantial gender imbalance in the dataset.
+- **Hepatomegaly:** There is a balanced distribution between subjects with hepatomegaly (`Yes` = 160) and those without (`No` = 152), allowing comparative analysis between these groups.
+- **Histologic:** Most subjects are categorized in the moderate to severe histologic stages (2-4), with the least number of subjects in stage 1, suggesting a prevalence of moderate to severe conditions in the study population.
+
+### E: Investigation of Discrete Covariates as Predictors of serBilir
+
+```{r, echo=FALSE, fig.height=3.5, fig.width=4, fig.align='center'}
+# Boxplot for serBilir vs sex
+p1 <- ggplot(pbc, aes(x = sex, y = serBilir)) +
+  geom_boxplot() +   coord_flip() +
+  labs(title = "serBilir vs Sex", x = "Sex", y = "serBilir (mg/dl)")
+
+# Boxplot for serBilir vs hepatomegaly
+p2 <- ggplot(pbc, aes(x = hepatomegaly, y = serBilir)) +
+  geom_boxplot() +   coord_flip() +
+  labs(title = "serBilir vs Hepatomegaly", x = "Hepatomegaly", y = "serBilir (mg/dl)")
+
+# Boxplot for serBilir vs histologic
+p3 <- ggplot(pbc, aes(x = as.factor(histologic), y = serBilir)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "serBilir vs Histologic Stage", x = "Histologic Stage", y = "serBilir (mg/dl)")
+# Arrange plots in a grid
+library(gridExtra)
+grid.arrange(p1, p2, p3, ncol=1)
+```
+
+### Interpretation of Boxplots for `serBilir` by Sex, Hepatomegaly, and Histologic Stage
+
+-   **Sex:** Notable differences in `serBilir` between sexes may suggest sex as a potential predictor, albeit with observed imbalance.
+-   **Hepatomegaly:** Disparities in `serBilir` levels between groups hint at hepatomegaly being a predictive factor.
+-   **Histologic Stage:** The trend of increasing `serBilir` with advancing histologic stages implies its predictive relevance.
+
+### F: Single-variable regressions of serBilir against each covariates
+
+```{r, echo=TRUE, fig.height=3, fig.width=3,message=FALSE, warning=FALSE, fig.align='center'}
+# Initializing a dataframe to store results
+regression_summary <- data.frame( Covariate = character(),Estimate = numeric(),
+  Std.Error = numeric(),tValue = numeric(),Pr = numeric(),
+  stringsAsFactors = FALSE)
+# List of covariates
+covariates <- c("age", "sex", "hepatomegaly", "albumin", "logalkaline", 
+                "logprothrombin", "histologic")
+# Loop through each covariate and perform single-variable regression
+for (covariate in covariates) {
+  # Formulating model string
+  model_string <- paste("serBilir ~", covariate)
+  # Fitting the model
+  model <- glm(model_string, family = Gamma(link = "log"), data = pbc)
+  # Extracting summary statistics
+  summary_stat <- summary(model)$coefficients[2,]  
+  # 2 corresponds to the covariate's row in the summary
+  # Adding the result to the dataframe
+  regression_summary <- rbind(regression_summary, 
+                              data.frame(Covariate = covariate, 
+                                         Estimate = summary_stat["Estimate"],
+                                         Std.Error = summary_stat["Std. Error"],
+                                         tValue = summary_stat["t value"],
+                                         Pr = summary_stat["Pr(>|t|)"]))}
+# Print the summary table
+knitr::kable(regression_summary, caption = "Summary of Single-variable Regressions 
+             using Gamma Distribution with Log Link.", row.names = FALSE)
+```
+
+### G: Forward model selection using AIC
+
+```{r,echo=TRUE, results='hide'}
+# Extracting covariates that were significant at the 20% level from the univariate analysis
+significant_covariates <- regression_summary$Covariate[regression_summary$Pr < 0.2]
+# Creating a formula for the full model using significant covariates
+full_model_formula <- as.formula(paste("serBilir ~", paste(significant_covariates, 
+                                                           collapse = " + ")))
+# Starting with a null model
+null_model <- glm(serBilir ~ 1, family = Gamma(link = "log"), data = pbc)
+# Using step function for forward selection
+final_model <- step(null_model, 
+                    scope = list(lower = null_model, upper = glm(full_model_formula, 
+                    family = Gamma(link = "log"), data = pbc)), 
+                    direction = "forward", trace = 1)
+```
+
+```{r echo=TRUE}
+# Displaying the final model summary
+summary(final_model)
+
+```
+
+### H: Final model equation
+
+The model for $\log_e(\text{{serBilir}})$ is:
+
+$\log_e(\text{{serBilir}}) = -7.99862 + 3.21106 \cdot X_2 + 0.51800 \cdot I_1 + 0.42250 \cdot \log_e(X_3) -0.56930 \cdot \log_e(X_4) + \varepsilon$
+
+Where:
+
+-   $log_e(X_2)$: prothrombin.
+-   $I_1$: hepatomegaly (1=yes).
+-   $log_e(X_3)$: alkaline.
+-   $X_4$: albumin.
+-   $\varepsilon$: Error term.
+
+### I: Interpretation of the Final Model
+
+-   **Hepatomegaly**: Associated with an increase in serum bilirubin of $e^{0.51800} - 1$ (approximately 68%), holding other variables constant and statistically significant.
+-   **Albumin**: A one-unit increase is linked to a serum bilirubin decrease of $e^{-0.56930} - 1$ (approximately 43%), controlling for other factors and is statistically significant.
+-   **logAlkaline**: A 1% rise relates to a 0.423% increase in serum bilirubin, ceteris paribus, and is highly significant.
+-   **logProthrombin**: A 1% increase is correlated with a 3.21% ascent in serum bilirubin, with other variables held constant, and is highly significant.
+-   **Intercept**: The significant intercept lacks practical interpretation, indicating a near-zero expected serum bilirubin for a hypothetical patient with all variables at baseline levels.
+
+### J: Characteristics of Patients with Elevated Levels of Serum Bilirubin
+
+-   **Presence of Hepatomegaly**: Patients with hepatomegaly are more likely to have elevated serum bilirubin levels, showing approximately a 68% increase compared to those without hepatomegaly.
+-   **Lower Albumin Levels**: Lower levels of albumin are associated with elevated levels of serum bilirubin. A one-unit increase in albumin corresponds to an approximate 43% decrease in serum bilirubin, suggesting that those with lower albumin levels are more prone to increased serum bilirubin levels.
+-   **Higher Alkaline Levels**: Elevated levels of alkaline are associated with elevated serum bilirubin. A 1% increase in alkaline is associated with a 0.42250% increase in serum bilirubin.
+-   **Higher Prothrombin Levels**: Elevated levels of prothrombin are also linked to elevated serum bilirubin. A 1% increase in prothrombin levels results in a 3.21106% increase in serum bilirubin levels.
+
+In conclusion, patients with hepatomegaly, lower levels of albumin, and higher levels of alkaline and prothrombin are typically characterized by elevated levels of serum bilirubin. The significance and magnitude of these variables in the model underscore their importance in assessing the levels of serum bilirubin in patients.
+
+### K: Model checking
+
+#### Scaled Deviance
+
+```{r}
+# calculating scaled deviance
+scaled_deviance <- final_model$deviance / summary(final_model)$dispersion
+cat("The Scaled Deviance is:", scaled_deviance,"\n")
+```
+
+The scaled deviance obtained from our model is 238.54, with 306 degrees of freedom in the residuals. Generally, if a model fits well, I might expect the scaled deviance to be approximately equal to the residual degrees of freedom, suggesting that the model is not over-dispersed and provides a suitable fit to the data.
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+diag <- broom::augment(final_model)
+ggplot(diag) +
+geom_point(aes(y = .resid, x = seq_along(.resid))) + xlab("Index") +
+ylab("Deviance Residuals")
+```
+
+No obvious pattern observed above. Residuals are randomly scattered around the zero line without displaying any apparent pattern. Some points may be considered far away from the zero line and could be influential points or outliers. It will be investigated further.
+
+
+```{r, echo=FALSE, fig.height=2,,message=FALSE, warning=FALSE, fig.width=4, fig.align='center'}
+resdev <- residuals(final_model, type = "deviance")
+p1 <- ggplot() +
+geom_histogram(aes(x = resdev, y = ..density..), bins = 12) +
+geom_density(aes(x = resdev))
+p2 <- ggplot() +
+geom_qq(aes(sample = resdev)) +
+geom_qq_line(aes(sample = resdev))
+p1 + p2
+```
+- The slightly right-skewed histogram suggests occasional underpredictions by the model, indicating potential non-normality in the residuals.
+- Deviations in the tails of the Q-Q plot signal non-normality in the residuals, implying potential outlier effects or heavy-tailed distributions not captured by the model.
+
+#### DHARMa Diagnostic Plots and Tests
+
+```{r echo=FALSE, fig.align='center'}
+par(cex.main=0.6, 
+    cex.lab=0.6, 
+    cex.axis=0.6)
+q <- simulateResiduals(fittedModel = final_model)
+plot(q)
+```
+
+-   **QQ Plot**
+    -   **KS Test**: $p = 0.00256$ suggests significant deviation and potential issues with model fit.
+    -   **Dispersion Test**: $p = 0.272$ shows no concern for overdispersion.
+    -   **Outlier Test**: $p = 0.74205$ indicates no significant outliers affecting model fit.
+-   **Residuals vs Predictions**
+    -   Notable quantile deviations and a significant combined adjusted quantile test suggest model fit issues across various predicted values.
+
+#### Partial residual plots
+
+```{r, echo=FALSE, fig.height=4, fig.width=5, fig.align='center'}
+suppressWarnings({par(mfrow=c(2,3)) 
+crPlots(final_model)
+})
+```
+
+The broken and solid lines relatively align for all continuous variables, suggesting a reasonably linear relationship with the response when accounting for other predictors.hepatomegaly: The boxplot indicates that there is more variation and higher values for hepatomegalyYes compared to hepatomegalyNo, implying a notable difference in the response for these two groups.The assumptions of linearity seem largely met for continuous predictors, and there's a substantial distinction between levels of hepatomegaly with respect to the response variable.
+
+#### Cook's distances and Leverage statistics
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+# Calculating and plotting leverage
+hatvalues <- hatvalues(final_model)  # Calculate hat values (leverage)
+cutoff_leverage <- 2*length(coef(final_model))/length(final_model$fitted.values)  # Typical leverage cutoff
+cat("Leverage cutoff:", cutoff_leverage,"\n")
+
+ggplot(diag, aes(y = .hat, x = seq_along(.hat))) +
+  geom_point() +
+  geom_hline(yintercept = cutoff_leverage, linetype = 2) +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(.hat > cutoff_leverage, as.character(seq_along(.hat)), NA)),
+    na.rm = TRUE,
+    max.overlaps = Inf
+  ) +
+  xlab("Index") +
+  ylab("Leverage")
+```
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+ggplot(diag, aes(y = .cooksd, x = seq_along(.hat))) +
+  geom_point() +
+  xlab("Index") +
+  ylab("Cook’s Distance") +
+  ggrepel::geom_text_repel(aes(label = ifelse(.cooksd > 0.025, 
+                            as.character(seq_along(.hat)), NA)), na.rm = TRUE) 
+```
+
+Several observations exhibit high leverage, exceeding the calculated leverage cutoff of 0.03846154, necessitating further scrutiny to determine if they also possess high Cook's Distance values (beyond a cutoff value of "1"). While no observations demonstrate substantially large Cook's Distance values (using a cutoff of 1), suggesting an absence of highly influential points, the potential removal of observation "288" might enhance the model. This implies that, although some data points have notable influence on the model, they do not drastically alter the overall model fit and predictions. Nevertheless, a cautious approach entails investigating these points further to validate model robustness.
+
+### L) Model fitting with Inverse Gaussian distribution and log link
+
+```{r,echo=TRUE, results='hide'}
+# Extracting covariates that were significant at the 20% level from the univariate analysis
+significant_covariates <- regression_summary$Covariate[regression_summary$Pr < 0.2]
+# Creating a formula for the full model using significant covariates
+full_model_ig_formula <- as.formula(paste("serBilir ~", paste(significant_covariates, 
+                                                              collapse = " + ")))
+# Starting with a null model
+null_model_ig <- glm(serBilir ~ 1, family = inverse.gaussian(link = "log"), data = pbc)
+# Using step function for forward selection
+final_model_ig <- step(null_model_ig, 
+                    scope = list(lower = null_model_ig, upper = 
+                    glm(full_model_ig_formula, family = Gamma(link = "log"), data = pbc)), 
+                    direction = "forward", trace = 1)
+```
+
+```{r}
+# Displaying the final model summary
+summary(final_model_ig)
+```
+
+```{r}
+# calculating scaled deviance
+scaled_deviance_ig <- final_model_ig$deviance / summary(final_model_ig)$dispersion
+cat("The Scaled Deviance is:", scaled_deviance_ig,"\n")
+```
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+# Deviance Residuals
+diag_ig <- broom::augment(final_model_ig)
+ggplot(diag_ig) +
+geom_point(aes(y = .resid, x = seq_along(.resid))) + xlab("Index") +
+ylab("Deviance Residuals")
+```
+
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+resdev_ig <- residuals(final_model_ig, type = "deviance")
+p1 <- ggplot() +
+geom_histogram(aes(x = resdev_ig, y = ..density..), bins = 12) +
+geom_density(aes(x = resdev_ig))
+p2 <- ggplot() +
+geom_qq(aes(sample = resdev_ig)) +
+geom_qq_line(aes(sample = resdev_ig))
+p1 + p2
+```
+
+
+```{r echo=FALSE, fig.align='center'}
+# DHARMa Diagnostic Plots and Tests
+q_ig <- simulateResiduals(fittedModel = final_model_ig)
+plot(q_ig)
+```
+
+```{r, echo=FALSE, fig.height=4, fig.width=5, fig.align='center'}
+# Partial residual plots
+suppressWarnings({par(mfrow=c(6,1)) 
+crPlots(final_model_ig)})
+```
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+# Calculating and plotting leverage
+hatvalues <- hatvalues(final_model_ig)  # Calculate hat values (leverage)
+cutoff_leverage <- 2*length(coef(final_model_ig))/length(final_model_ig$fitted.values)  # Typical leverage cutoff
+cat("Leverage cutoff:", cutoff_leverage,"\n")
+
+ggplot(diag_ig, aes(y = .hat, x = seq_along(.hat))) +
+  geom_point() +
+  geom_hline(yintercept = cutoff_leverage, linetype = 2) +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(.hat > cutoff_leverage, as.character(seq_along(.hat)), NA)),
+    na.rm = TRUE,
+    max.overlaps = Inf
+  ) +
+  xlab("Index") +
+  ylab("Leverage")
+```
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+ggplot(diag_ig, aes(y = .cooksd, x = seq_along(.hat))) +
+  geom_point() +
+  xlab("Index") +
+  ylab("Cook’s Distance") +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(.cooksd > 0.025, as.character(seq_along(.hat)), NA)),
+    na.rm = TRUE
+  ) 
+```
+
+**Model Diagnostic Summary**
+
+The inverse Gaussian model, exhibiting a higher scaled deviance (265.9984) compared to the Gaussian model (238.54),and displayed several promising diagnostic attributes.The deviance residuals showed desirable random dispersion, and the histogram indicated less right skewness in residual distribution. The Q-Q plot suggested a potentially better normal approximation of residuals, supported by non-significant DHARMa diagnostic tests. However, attention is needed for observations with leverage surpassing the 0.03846 cutoff, even though no major concerns were spotted in Cook's distance or partial residual plots.
+
+## Question 2: Analyzing Heart Disease Data
+
+### A: Examination of Variable ER_visits
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.height=2, fig.width=4, fig.align='center'}
+# Load the dataset
+heart_data<- read.csv("Heart_Disease.csv")
+# Create a summarized data frame for the geom_pointrange layer
+sum_data <- data.frame(ER_visits = unique(heart_data$ER_visits))
+sum_data$prob <- dpois(sum_data$ER_visits, lambda = mean(heart_data$ER_visits))
+
+# Plot
+ggplot(heart_data) +
+  geom_bar(aes(x = ER_visits, y = ..prop..), stat="count") +
+  geom_pointrange(data = sum_data, 
+                  aes(x = ER_visits, 
+                      y = prob, 
+                      ymin = 0, 
+                      ymax = prob),
+                  colour = "red") +
+  labs(title = "ER_visits with Poisson fit", y = "Probability") +
+  theme_minimal()
+# Overdispersion might be present if variance significantly exceeds mean
+mean_er_visits <- mean(heart_data$ER_visits)
+var_er_visits <- var(heart_data$ER_visits)
+# Display the mean and variance of ER_visits
+cat("Mean of ER_visits:", mean_er_visits, "\n")
+cat("Variance of ER_visits:", var_er_visits, "\n")
+```
+
+Overdispersion Identified: The number of ER visits with a Poisson fit is higher than the number of ER visits without a Poisson fit. This means that there are more ER visits than would be expected under a Poisson distribution.The variance of ER visits (6.96) notably exceeds its mean (3.43), highlighting overdispersion and suggesting the possible inadequacy of Poisson regression for modeling this data. Alternative models like Negative Binomial Regression may be more apt due to its capability to handle overdispersion.
+
+### B: Graphical Examination of ER_visits, Age, Total_cost, and Comorbidities
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.height=4, fig.width=5, fig.align='center'}
+# Histograms for ER_visits, Age, Total_cost, and Comorbidities
+par(mfrow=c(2,2))
+hist(heart_data$ER_visits, main="Histogram of ER_visits", xlab="ER_visits", col="lightblue", border="black")
+hist(heart_data$Age, main="Histogram of Age", xlab="Age", col="lightblue", border="black")
+hist(heart_data$Total_Cost, main="Histogram of Total_Cost", xlab="Total_Cost", col="lightblue", border="black")
+hist(heart_data$Comorbidities, main="Histogram of Comorbidities", xlab="Comorbidities", col="lightblue", border="black")
+```
+
+```{r}
+# Log transformations
+# Add a small constant before taking log
+heart_data$logtotal_cost <- log(heart_data$Total_Cost + 1)
+heart_data$logcomorbidities <- log(heart_data$Comorbidities + 1)
+```
+
+- ER_visits is gradually decreasing frequency,no need to apply transformations to the dependent variable in a count regression context. This is especially true for Poisson or negative binomial regressions where the dependent variable is expected to be a count.
+- Age may not need transformation despite left-skewness as older ages are naturally more prevalent.
+- Total_Cost is right-skewed with a long tail; Log transformation applied to address right skewness and linearise its relationship with response variables.
+- Comorbidities is also exhibits a long tail; log transformation can manage skewness and potentially stabilize variance when used in regression analyses.
+
+### C: Investigating Continuous Covariates
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.height=6, fig.width=8, fig.align='center'}
+# Selecting continuous covariates and 'ER_visits' for correlation matrix & ggpairs
+cont_vars <- c("ER_visits", "Total_Cost", "Age", "Interventions", "Drug", "Complications", "Comorbidities", "Duration", "Gender")
+# Checking for collinearity
+cor_matrix <- cor(heart_data[cont_vars], use = "pairwise.complete.obs") 
+# Displaying pair plots
+ggpairs(heart_data[cont_vars])
+```
+Interpretation of Scatter Plots and Collinearity Investigation
+
+- **ER_visits and Total_Cost:** The correlation coefficient of $r = 0.377$ alongside scatter plot visualization might suggest a mild positive linear relationship.
+- **ER_visits and Age:** A weak correlation of $r = 0.062$ and scatter plot might hint at a very subtle or potentially non-existent linear relationship between ER visits and age.However, categorizing age variable might improve the relationship ( young & elder etc.)
+- **ER_visits and Interventions:** The moderate correlation $r = 0.367$ coupled with scatter plot assessment might imply a relatively weak positive linear relationship. 
+- **ER_visits and Drug:** Noticing a moderately strong correlation of $r = 0.528$ and a scatter plot could reveal a reasonably discernible positive linear relationship.
+- **Gender and ER_visits:**   The correlation of 0.111 indicates a slight positive linear relationship between gender and ER visits.
+- **Collinearity Notes:** Noticing some moderate correlations (e.g., Total_Cost and Interventions $r = 0.727$), caution should be taken to avoid multicollinearity issues in the regression model. The association between Comorbidities and Duration ($r = 0.495$) also stands out, inviting a deeper dive during modeling.
+
+### D) Using Drug as the only covariate, fit a Poisson GLM on ER_visits.
+
+```{R}
+# Fit a Poisson GLM
+poisson_model <- glm(ER_visits ~ Drug, family = poisson, data = heart_data)
+summary(poisson_model)
+```
+
+**Discussion:** The max deviance residual is quite large, indicating potential outliers or misfit. Residual Deviance relative to the degrees of freedom suggests overdispersion (1169.5/786), violating the equidispersion assumption of Poisson regression.
+
+**Alternative Model Recommendation:** Given the indication of overdispersion, Negative Binomial Regression model accommodates it by introducing an additional parameter. Negative Binomial regression adjusts for overdispersion, providing more robust standard errors and inferences.Improved Fit: It may provide a better fit and more reliable estimates if the data violates Poisson's assumptions.
+
+### E: Single-variable regressions of ER_visits against each covariates
+
+```{r, echo=TRUE, fig.height=3, fig.width=3,message=FALSE, warning=FALSE, fig.align='center'}
+# Initializing a dataframe to store results
+regression_summary_nb <- data.frame(Covariate = character(), Estimate = numeric(),
+                                    Std.Error = numeric(), zValue = numeric(), Pr = numeric(),
+                                    stringsAsFactors = FALSE)
+# List of covariates
+covariates_p <- c("Total_Cost","logtotal_cost","logcomorbidities","Age",
+    "Gender","Interventions","Drug","Complications","Comorbidities","Duration")
+# Loop through each covariate and perform single-variable regression
+for (covariate in covariates_p) {
+  # Formulating model string
+  model_string_p <- paste("ER_visits ~", covariate)
+  # Fitting the model
+  model_p <- glm.nb(model_string_p, data = heart_data)
+  # Extracting summary statistics
+  summary_stat_p <- summary(model_p)$coefficients[2,]
+  # Adding the result to the dataframe
+  regression_summary_nb <- rbind(regression_summary_nb, 
+                                data.frame(Covariate = covariate,
+                                           Estimate = summary_stat_p["Estimate"],
+                                           Std.Error = summary_stat_p["Std. Error"],
+                                           zValue = summary_stat_p["z value"],
+                                           Pr = summary_stat_p["Pr(>|z|)"]))}
+# Print the summary table
+kable(regression_summary_nb, caption = "Summary of Single-variable Regressions using 
+      Negative Binomial Distribution with Log Link.", row.names = FALSE)
+```
+
+### F: Backward model selection using AIC
+
+```{r,echo=TRUE, results='hide'}
+# Full model with variables significant at the 20% level in the univariate analyses
+full_model_nb <- glm.nb(ER_visits ~ Total_Cost + Age + Gender + Interventions + 
+                          Drug + Complications + Duration, 
+                        data = heart_data)
+# Backward model selection using AIC with step function
+final_model_nb <- step(full_model_nb, direction = "backward", trace = TRUE)
+```
+
+```{r}
+# Displaying the summary of the final model
+summary(final_model_nb)
+```
+
+### G: Final model equation
+
+Given the results of the final model, the equation to predict the expected number of emergency room ($ER\_visits$) visits using a Negative Binomial regression model is expressed as: 
+
+$\log(ER\_visits) = \beta_0 + \beta_1 \times Total\_Cost + \beta_2 \times Age + \beta_3 \times Gender + \beta_4 \times Interventions + \beta_5 \times Drug + \beta_6 \times Duration+ \varepsilon$
+
+where:
+
+-   $\log(\cdot)$ denotes the natural logarithm.
+-   $\beta_0 = 0.4579$ is the intercept.
+-   $\beta_1 = 1.620 \times 10^{-5}$ is the coefficient for $Total\_Cost$ (the total cost of claims by subscriber in dollars).
+-   $\beta_2 = 0.007192$ is the coefficient for $Age$ (age of the subscriber in years).
+-   $\beta_3 = 0.1876$ is the coefficient for $Gender$ (1 if the subscriber is male, and 0 otherwise).
+-   $\beta_4 = 0.01140$ is the coefficient for $Interventions$ (total number of interventions or procedures carried out).
+-   $\beta_5 = 0.2120$ is the coefficient for $Drug$ (number of tracked drugs prescribed).
+-   $\beta_6 = 0.0002941$ is the coefficient for $Duration$ (number of days of duration of treatment condition).
+-   $\varepsilon$: Error term.
+
+### H: Interpretation of the Final Model
+
+-   **Total_Cost**: A one-unit increase (i.e., one-dollar increase in total claims) is associated with an increase in ER visits of $e^{1.620 \times 10^{-5}} - 1$ (approximately 0.0016% or about a 0.16% increase for every 100 dollar increase), holding all other variables constant. This relationship is statistically significant.
+-   **Age**: A one-year increase in age is linked with an increase in ER visits of $e^{0.007192} - 1$ (approximately 0.72%), controlling for other factors, and is statistically significant.
+-   **Gender**: Being male (Gender = 1) is associated with an increase in ER visits of $e^{0.1876} - 1$ (approximately 20.6%), ceteris paribus, and is highly significant.
+-   **Interventions**: A one-unit increase in the total number of interventions or procedures is correlated with an increase in ER visits of $e^{0.01140} - 1$ (approximately 1.15%), with all else held constant, and is statistically significant.
+-   **Drug**: A one-unit increase in the number of tracked drugs prescribed is associated with an increase in ER visits of $e^{0.2120} - 1$ (approximately 23.6%), holding all other variables constant, and is statistically significant.
+-   **Duration**: A one-day increase in the duration of treatment condition is linked to an increase in ER visits of $e^{0.0002941} - 1$ (approximately 0.029%), controlling for other factors. However, note that this variable was not statistically significant in the final model.
+-   **Intercept**: The model's intercept of 0.4579 would theoretically represent the log count of ER visits for a female (Gender = 0) with all numerical predictors being zero and categorical variables at their reference levels. However, since it is not practically possible for many of these variables (like Age, Total_Cost, etc.) to be zero, the intercept does not have a tangible interpretation without considering the context of the other variables.
+
+### I: Model checking
+
+#### Scaled Deviance
+
+```{r}
+# calculating scaled deviance
+scaled_deviance <- final_model_nb$deviance / summary(final_model_nb)$dispersion
+cat("The Scaled Deviance is:", scaled_deviance,"\n")
+```
+
+The scaled deviance from our adjusted Negative Binomial model is 820.5005 with 781 residual degrees of freedom. Ideally, these two values should be fairly close if the model fits well, suggesting that our model might not provide a perfect fit to the data.However it is still quite good and it may offer useful insights.
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+diag_nb <- broom::augment(final_model_nb)
+ggplot(diag_nb) +
+geom_point(aes(y = .resid, x = seq_along(.resid))) + xlab("Index") +
+ylab("Deviance Residuals")
+```
+
+The observed residuals exhibit no clear pattern, scattering arbitrarily around the zero line without revealing any noticeable trend.
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+resdev_nb <- residuals(final_model_nb, type = "deviance")
+p1 <- ggplot() +
+geom_histogram(aes(x = resdev_nb, y = ..density..), bins = 12) +
+geom_density(aes(x = resdev_nb))
+p2 <- ggplot() +
+geom_qq(aes(sample = resdev_nb)) +
+geom_qq_line(aes(sample = resdev_nb))
+p1 + p2
+```
+- The mildly right-skewed histogram indicates sporadic underestimations from the negative binomial model, hinting at a potential departure from residual normality.
+- Tail divergences in the Q-Q plot highlight the presence of non-normal residuals in the negative binomial model, suggesting the possibility of unaccounted outlier influence or distributions with heavy tails.
+
+#### DHARMa Diagnostic Plots and Tests
+
+```{r echo=FALSE, fig.align='center'}
+par(cex.main=0.6, 
+    cex.lab=0.6, 
+    cex.axis=0.6)
+q_nb <- simulateResiduals(fittedModel = final_model_nb)
+plot(q_nb)
+```
+-   **QQ Plot**
+    -   **KS Test**: $p = 0.613$ suggests that the model's predicted values do not significantly deviate from the expected distribution, presenting no evident concerns regarding the goodness-of-fit of the model.
+    -   **Dispersion Test**: $p = 0.464$ does not present any issues related to overdispersion.
+    -   **Outlier Test**: $p = 0.309$, there doesn't appear to be any significant outliers impacting the model fit.
+-   **Residuals vs Predictions**
+    -   Prominent deviations in the quantiles, along with a substantial combined adjusted quantile test, indicate potential problems with the model fit across a range of predicted values.
+
+#### Partial residual plots
+
+```{r, echo=FALSE, fig.height=4, fig.width=5, fig.align='center'}
+# Partial residual plots
+suppressWarnings({par(mfrow=c(3,2)) 
+crPlots(final_model_nb)})
+```
+
+The alignment of broken and solid lines in the partial residual plots for all variables indicates a generally linear relationship with the response, while holding other predictors constant. The assumptions of linearity appear largely satisfied.
+
+#### Cook's distances and Leverage statistics
+
+```{r}
+# Calculating and plotting leverage
+hatvalues <- hatvalues(final_model_nb)  # Calculate hat values (leverage)
+cutoff_leverage_nb <- 2*length(coef(final_model_nb))/length(final_model_nb$fitted.values)  # Typical leverage cutoff
+cat("Leverage cutoff:", cutoff_leverage_nb,"\n")
+```
+
+```{r, echo=FALSE, fig.height=3, fig.width=5, fig.align='center'}
+ggplot(diag_nb, aes(y = .hat, x = seq_along(.hat))) +
+  geom_point() +
+  geom_hline(yintercept = cutoff_leverage_nb, linetype = 2) +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(.hat > cutoff_leverage_nb, as.character(seq_along(.hat)), NA)),
+    na.rm = TRUE,
+    max.overlaps = Inf
+  ) +
+  xlab("Index") +
+  ylab("Leverage")
+```
+
+```{r, echo=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+ggplot(diag_nb, aes(y = .cooksd, x = seq_along(.hat))) +
+  geom_point() +
+  xlab("Index") +
+  ylab("Cook’s Distance") +
+  ggrepel::geom_text_repel(aes(label = ifelse(.cooksd > 0.025, 
+                            as.character(seq_along(.hat)), NA)), na.rm = TRUE) 
+```
+Numerous observations exhibit high leverage, surpassing the established leverage cutoff of 0.0178. Despite this, no observations present large Cook's distance values (using a threshold of 1), indicating the absence of points with substantial influence on the model. This suggests that while certain data points have pronounced leverage, they don't significantly impact the model's fit and predictive capability. Observations 45 and 147 may be treated carefully.
+
+## Question 3
+### A: Logistic Distribution PDF
+
+I first consider that the noise component $\epsilon_i$ is a (standard) logistic distribution where the cumulative distribution function $F_{\epsilon_i}(u) = P(\epsilon_i \leq u)$ is defined via,$F_\epsilon(u) = \frac{1}{1 + e^{-u}}$
+
+The PDF (probability density function) of the logistic distribution can be derived from the CDF (cumulative distribution function) as follows: $f_\epsilon(u) = \frac{d}{du}F_\epsilon(u)$
+Where: $F_\epsilon(u) = \frac{1}{1 + e^{-u}}$
+
+Calculating the derivative with respect to $u$ yields the PDF: $f_\epsilon(u) = \frac{e^{-u}}{(1 + e^{-u})^2}$
+
+Let's plot the PDF of the logistic distribution:
+
+```{r, echo=TRUE, fig.height=3, fig.width=5, fig.align='center',warning=FALSE, message=FALSE}
+# Define the function for the pdf of logistic distribution
+logistic_pdf <- function(u) {
+  exp(-u) / (1 + exp(-u))^2}
+# Create a sequence of u values
+u <- seq(-6, 6, by=0.01)
+# Create a data frame for plotting
+df <- data.frame(u = u, pdf = logistic_pdf(u))
+# Create the ggplot object
+p <- ggplot(df, aes(x = u, y = pdf)) + 
+  geom_line(color = "blue") + 
+  labs(title = "PDF of the Logistic Distribution",
+       x = expression(u),
+       y = expression(f[epsilon](u))) +
+  theme_minimal()
+# Display the plot
+print(p)
+```
+
+### B: Symmetry of Logistic Distribution
+
+Given the cumulative distribution function (CDF) of the logistic distribution as:
+
+\[ F_{\varepsilon}(u) = \frac{1}{1 + e^{-u}} \]
+
+To establish the symmetry about 0, I need to demonstrate that:
+
+\[ F_{\varepsilon}(u) = 1 - F_{\varepsilon}(-u) \]
+
+I'll substitute the expression for \( F_{\varepsilon}(u) \) into the above equation and verify whether the relation holds:
+
+\[ \frac{1}{1 + e^{-u}} = 1 - \frac{1}{1 + e^{u}} \]
+
+Computing the right-side expression:
+
+\[ \frac{1}{1 + e^{-u}} = \frac{1 + e^{u} - 1}{1 + e^{u}} = \frac{e^{u}}{1 + e^{u}} \]
+
+So now I have:
+
+\[ \frac{1}{1 + e^{-u}} = \frac{e^{u}}{1 + e^{u}} \]
+
+To check the equality, let's work with the expression on the right:
+
+\[ 1 = (1 + e^{-u}) \times \frac{e^{u}}{1 + e^{u}} \]
+
+\[ 1 = \frac{e^{u} + 1}{1 + e^{u}} \]
+
+Since the numerator and the denominator are the same, the fraction equals 1:
+
+\[ 1 = 1 \]
+
+Thus, successfully demonstrated the symmetry of the logistic distribution about 0, since
+
+\[ F_{\varepsilon}(u) = 1 - F_{\varepsilon}(-u) \]
+
+### C: Derivation of Probabilistic Relation
+
+Having the latent variable representation:
+
+\[ \Psi_i = x_i^\top\beta + \varepsilon_i \]
+
+And:
+
+\[
+Y_i = 
+\begin{cases} 
+1, & \text{if } \Psi_i \geq 0 \\
+0, & \text{if } \Psi_i < 0 
+\end{cases}
+\]
+
+To find the probability that $Y_i = 1$ given $X_i = x_i, \beta$, I express this probability in terms of the latent variable:
+
+\[ P(Y_i = 1|X_i = x_i, \beta) = P(\Psi_i \geq 0|X_i = x_i, \beta) \]
+
+Substituting the expression for \(\Psi_i\):
+
+\[ P(Y_i = 1|X_i = x_i, \beta) = P(x_i^\top\beta + \varepsilon_i \geq 0|X_i = x_i, \beta) \]
+
+Rearranging to isolate the noise term:
+
+\[ P(Y_i = 1|X_i = x_i, \beta) = P(\varepsilon_i \geq -x_i^\top\beta) \]
+
+Given that \(\varepsilon_i\) follows a logistic distribution, I use the CDF to express this probability:
+
+\[ P(Y_i = 1|X_i = x_i, \beta) = 1 - F_{\varepsilon}(-x_i^\top\beta) \]
+
+Where the CDF of the logistic distribution is defined as:
+
+\[ F_{\varepsilon}(u) = \frac{1}{1 + e^{-u}} \]
+
+Substituting this definition and simplifying:
+
+\[ P(Y_i = 1|X_i = x_i, \beta) = 1 - \frac{1}{1 + e^{x_i^\top\beta}} = \frac{1}{1 + e^{-x_i^\top\beta}} \]
+
+### D: Defining a GLM and Specifying the Link Function
+
+A Generalized Linear Model (GLM) is defined as a model where the random component is a member of the exponential family, and the systematic component is linear in the parameters. The link function provides the relationship between the linear predictor and the mean of the distribution function.
+
+Given (2):
+
+\[ 
+P(Y_i = 1|X_i = x_i, \beta) = \frac{1}{1 + e^{-x_i^\top\beta}}
+\]
+
+This implies a relationship between the linear predictor (the systematic component) and the mean of the distribution function (the expected value of the response variable). Here, the linear predictor is:
+
+\[ 
+\eta_i = x_i^\top\beta
+\]
+
+And the mean of the Bernoulli distributed response variable \(Y_i\) is:
+
+\[ 
+\mu_i = E[Y_i|X_i = x_i] = P(Y_i = 1|X_i = x_i, \beta)
+\]
+
+The relationship between \(\eta_i\) and \(\mu_i\) is established by the link function \(g(\cdot)\), such that:
+
+\[ 
+g(\mu_i) = \eta_i
+\]
+
+In this case, from (2), I can identify that the link function \(g(\cdot)\) is the logit function, defined as:
+
+\[ 
+g(\mu) = \log\left(\frac{\mu}{1-\mu}\right)
+\]
+
+Because if I take the logit of the probability in (2), I have:
+
+\[ 
+g(\mu_i) = \log\left(\frac{\mu_i}{1-\mu_i}\right) = \log\left(\frac{P(Y_i = 1|X_i = x_i, \beta)}{1-P(Y_i = 1|X_i = x_i, \beta)}\right) = x_i^\top\beta = \eta_i
+\]
+
+Thus, with the Bernoulli distribution for the response variable and the logit as the link function,  defining a logistic regression model, which is a special case of a GLM.
+
+### E: Probability Expression for Normal Distribution Noise
+
+Given the latent variable $\Psi_i$ and considering the noise component $\varepsilon_i$ to be normally distributed, i.e., $\varepsilon_i \sim \mathcal{N}(0,1)$ 
+
+let's derive the probability expression.
+
+(1): $\Psi_i = x_i^\top\beta + \varepsilon_i$ with,\[ Y_i = \begin{cases} 1, & \text{if } \Psi_i \geq 0 \\ 0, & \text{if } \Psi_i < 0 \end{cases} \]
+
+ find the expression for: $P(Y_i = 1 | X_i = x_i, \beta)$
+
+Using (1), express the probability as: $P(Y_i = 1 | X_i = x_i, \beta) = P(\Psi_i \geq 0 | X_i = x_i, \beta)$
+
+Substituting the expression for \(\Psi_i\) from (1):
+\[ P(Y_i = 1 | X_i = x_i, \beta) = P(x_i^\top\beta + \varepsilon_i \geq 0 | X_i = x_i, \beta)  \]
+
+Now, rearranging to isolate the noise term:
+\[ P(Y_i = 1 | X_i = x_i, \beta) = P(\varepsilon_i \geq -x_i^\top\beta)  \]
+
+Given that \(\varepsilon_i\) follows a normal distribution, use the Cumulative Distribution Function (CDF) of the standard normal distribution, denoted as \(\Phi\), to express this probability:
+\[ P(Y_i = 1 | X_i = x_i, \beta) = P(\varepsilon_i \geq -x_i^\top\beta) = 1 - \Phi(-x_i^\top\beta)\]
+
+Where \(\Phi\) is defined as:
+\[ \Phi(u) = \frac{1}{\sqrt{2\pi}}\int_{-\infty}^{u} e^{-\frac{z^2}{2}} dz  \]
+
+Utilize the symmetry property of the standard normal distribution:  $1 - \Phi(u) = \Phi(-u)$
+
+Hence, the expression becomes:\[P(Y_i = 1 | X_i = x_i, \beta) = \Phi(x_i^\top\beta)  \]
+
+This gives the probability of class membership with the noise term \(\varepsilon_i\) following a standard normal distribution.
+
+### F: Identifying GLM and Specifying the Link Function
+
+In part e), derived the probability expression:
+\[ P(Y_i = 1 | X_i = x_i, \beta) = \Phi(x_i^\top\beta) \]
+
+With:
+
+- \textbf{Random Component:} $Y_i$, representing a binary outcome and hence, following a Bernoulli distribution.
+- \textbf{Systematic Component:} The linear predictor, which is given as $x_i^\top \beta$.
+- \textbf{Link Function:} Utilizing the cumulative distribution function (CDF) of the standard normal distribution, $\Phi$, the link function in this context is identified as the \textbf{probit link function}.
+
+Therefore, formalizing this in the context of a Generalized Linear Model (GLM), I express:
+\[ \Phi^{-1}(P(Y_i = 1 | X_i = x_i, \beta)) = x_i^\top\beta \]
+Here, $\Phi^{-1}$ denotes the probit function, which is the inverse of $\Phi$, acting as the link that correlates the mean of the random component, $\mu_i = E[Y_i]$, with the linear predictor in the systematic component.
+
+Thus, the generalized linear model (GLM) identified from part e) employs the \textbf{probit link function}, associating the linear predictor with the Bernoulli-distributed response variable through the CDF of the standard normal distribution.
+
+
+### AI Use Acknowledgement
+I have used Chat GPT and Grammarly to revise my writing, and debugging.
+.
