@@ -10,13 +10,17 @@ This repository serves as a comprehensive showcase of my coursework, projects, a
 ## Table of Contents
 1. [Principles of Finance](./ACST6003_Principles_of_Finance/README.md)
 2. [Techniques in Business Analytics](./BUSA8000_Techniques_in_Business_Analytics/README.md)
-3. [Applied Predictive Analytics](https://github.com/YourUsername/Applied_Predictive_Analytics/README.md) 
+3. [Applied Predictive Analytics](https://github.com/YourUsername/Applied_Predictive_Analytics/README.md)
 4. [Management of Data Analytics and Change](./BUSA8030_Management_of_Data_Analytics_and_Change/README.md)
 5. [Data and Visualization for Business](./BUSA8090_Data_and_Visualisation_for_Business/README.md)
 6. [Data Science](./COMP2200_Data_Science/README.md)
-7. [Machine Learning](./COMP8220_Machine_Learning/README.md)  *(Separate Repository available as it was a requirement for the unit)*
+7. [Machine Learning](./COMP8220_Machine_Learning/README.md)
 8. [Applied Econometrics](./ECON8040_Applied_Econometrics/README.md)
 9. [Statistical Theory](./STAT8310_Statistical_Theory/README.md)
+10. [Business Analytics Project](./BUSA8031_Business_Analytics_Project/README.md)
+11. [Topics in Applied Econometrics](./ECON8015_Topics_in_Applied_Econometrics/README.md)
+12. [Generalized Linear Models](./STAT8111_Generalized_Linear_Models/README.md)
+13. [Statistical Graphics](./STAT8123_Statistical_Graphics/README.md)
 
 ## Technologies Used
 - Python
