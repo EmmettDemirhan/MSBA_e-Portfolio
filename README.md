@@ -35,4 +35,4 @@ This repository serves as a comprehensive showcase of my coursework, projects, a
 Feel free to reach out to me on [LinkedIn](https://www.linkedin.com/in/demirhanemmett/),[Kaggle](https://www.kaggle.com/emmettdemirhan/) or at [demirhanemmett@gmail.com](mailto:demirhanemmett@gmail.com).
 
 ## License
-This project is licensed under the [MIT License](./LICENSE).
+This portfolio is licensed under the [MIT License](./LICENSE).
